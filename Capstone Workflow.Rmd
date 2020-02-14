@@ -1,14 +1,18 @@
 ---
-title: "Capston Workflow"
+title: "Capstone Workflow"
 author: "Kyle Blackburn"
 date: "1/31/2020"
 output: html_document
 ---
 
-packages
-```{r}
-library(tidyverse)
-```
+
+
+
+
+
+
+
+
 
 
 
