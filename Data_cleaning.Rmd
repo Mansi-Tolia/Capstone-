@@ -25,7 +25,21 @@ IPEDS
 
 
 COLLEGE SCORECARD
-```{r}
+```{r warning=FALSE}
+library(tidyverse)
+library(readr)
+library(plyr)
+
+setwd("~/Desktop/CollegeScorecard_Raw_Data 13.33.43/")
+mydir = "~/Desktop/CollegeScorecard_Raw_Data 13.33.43/"
+myfiles = list.files(path=mydir, pattern="*.csv", full.names=TRUE)
+myfiles = list(myfiles)
+list.data <- list()
+for (i in 1:length(myfiles)){
+  list.data[[i]] <- read_csv(myfiles[i])
+}
+
+
 
 ```
 
