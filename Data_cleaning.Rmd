@@ -29,27 +29,53 @@ names(ipeds08)
 
 
 COLLEGE SCORECARD
-```{r warning=FALSE}
+```{r message=FALSE}
 library(tidyverse)
 library(readr)
 library(plyr)
 
+#load college scorecard 1997-2018
 setwd("~/Desktop/CollegeScorecard_Raw_Data 13.33.43/")
 mydir = "~/Desktop/CollegeScorecard_Raw_Data 13.33.43/"
-myfiles = list.files(path=mydir, pattern="*.csv", full.names=TRUE)
-myfiles = list(myfiles)
+myfiles = list.files(path=mydir, pattern="*_PP.csv", full.names=TRUE)
 list.data <- list()
 for (i in 1:length(myfiles)){
   list.data[[i]] <- read_csv(myfiles[i])
 }
-
-
-
 ```
 
 
+```{r}
+# names to keep
+keep <- c('OPEID', 'OPEID6', 'INSTNM', 'CITY', 'CONTROL', 'REGION', 'LOCALE2', 'LATITUDE', 'LONGITUDE', 'HBCU',
+          'PBI', 'ANNHI', 'TRIBAL', 'AANAPII', 'HSI', 'NANTI', 'MENONLY', 'WOMENONLY', 'ADM_RATE', 'PCIP03',
+          'PCIP04', 'PCIP05', 'PCIP09', 'PCIP10','PCIP11','PCIP12','PCIP13','PCIP14','PCIP15','PCIP16','PCIP19',
+          'PCIP22','PCIP23','PCIP24','PCIP25','PCIP26','PCIP27','PCIP29','PCIP30','PCIP31','PCIP38','PCIP39',
+          'PCIP40','PCIP41','PCIP42','PCIP43','PCIP44','PCIP45','PCIP46','PCIP47','PCIP48','PCIP49','PCIP50',
+          'PCIP51','PCIP52','PCIP54','NPT4_PUB','NPT4_PRIV','NPT41_PUB','NPT42_PUB','NPT43_PUB','NPT44_PUB',
+          'NPT45_PUB','NPT41_PRIV','NPT42_PRIV','NPT43_PRIV','NPT44_PRIV','NPT45_PRIV','AVGFACSAL','CDR2',
+          'CDR3','COMPL_RPY_1YR_RT','NONCOM_RPY_1YR_RT','LO_INC_RPY_1YR_RT','MD_INC_RPY_1YR_RT','HI_INC_RPY_1YR_RT',
+          'DEP_RPY_1YR_RT','IND_RPY_1YR_RT','PELL_RPY_1YR_RT','NOPELL_RPY_1YR_RT','FEMALE_RPY_1YR_RT','MALE_RPY_1YR_RT',
+          'FIRSTGEN_RPY_1YR_RT','NOTFIRSTGEN_RPY_1YR_RT','COMPL_RPY_3YR_RT','NONCOM_RPY_3YR_RT','LO_INC_RPY_3YR_RT',
+          'MD_INC_RPY_3YR_RT','HI_INC_RPY_3YR_RT','DEP_RPY_3YR_RT','IND_RPY_3YR_RT','PELL_RPY_3YR_RT',
+          'NOPELL_RPY_3YR_RT','FEMALE_RPY_3YR_RT','MALE_RPY_3YR_RT','FIRSTGEN_RPY_3YR_RT','NOTFIRSTGEN_RPY_3YR_RT',
+          'COMPL_RPY_5YR_RT','NONCOM_RPY_5YR_RT','LO_INC_RPY_5YR_RT','MD_INC_RPY_5YR_RT','HI_INC_RPY_5YR_RT',
+          'DEP_RPY_5YR_RT','IND_RPY_5YR_RT','PELL_RPY_5YR_RT','NOPELL_RPY_5YR_RT','FEMALE_RPY_5YR_RT','MALE_RPY_5YR_RT',
+          'FIRSTGEN_RPY_5YR_RT','NOTFIRSTGEN_RPY_5YR_RT','COMPL_RPY_7YR_RT','NONCOM_RPY_7YR_RT','LO_INC_RPY_7YR_RT',
+          'MD_INC_RPY_7YR_RT','HI_INC_RPY_7YR_RT','DEP_RPY_7YR_RT','IND_RPY_7YR_RT','PELL_RPY_7YR_RT',
+          'NOPELL_RPY_7YR_RT','FEMALE_RPY_7YR_RT','MALE_RPY_7YR_RT','FIRSTGEN_RPY_7YR_RT','NOTFIRSTGEN_RPY_7YR_RT',
+          'DEBT_MDN','GRAD_DEBT_MDN','PAR_ED_N','APPL_SCH_N','RPY_1YR_N','RPY_3YR_N','RPY_5YR_N','RPY_7YR_N','LOAN_EVER')
+df_names <- list(myfiles)
+```
 
-
+```{r}
+# subset each file by keep
+data <- list()
+for (i in 1:length(list.data)){
+  df_tmp = list.data[[i]]
+  data[[i]] = df_tmp %>% select(keep)
+}
+```
 
 
 
