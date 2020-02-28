@@ -92,7 +92,24 @@ for (i in 1:length(data)){
 for (i in 1:length(data)){
   data[[i]] = naniar::replace_with_na_all(data[[i]], ~.x == "NULL")
 }
+```
 
+```{r warning=FALSE}
+# convert text columns to chars and everything else to numeric
+numeric_columns <- names(data[[1]][,c(-3,-4)])
+
+for (i in 1:length(data)){
+  data[[i]][numeric_columns] = sapply(data[[i]][numeric_columns], as.numeric)
+}
+```
+
+
+```{r}
+# row bind all dfs together 
+data <- bind_rows(data)
+
+#to RDS
+saveRDS(data, file = "~/Desktop/cleaned_scorecard.rds")
 ```
 
 
