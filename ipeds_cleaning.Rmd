@@ -1,0 +1,127 @@
+---
+title: "Data_Cleaning2"
+author: "Lyufan Pan"
+date: "February 27, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE}
+library(tidyverse)
+library(data.table)
+library(corrplot)
+library(factoextra)
+```
+
+```{r warning=FALSE, include=FALSE}
+ipeds <- read_csv("ipeds_data/ipeds.csv")
+```
+
+
+```{r}
+ipeds %>% summarize_all(funs(1 - sum(is.na(.))/length(.))) %>% 
+  transpose() -> percent
+max(percent[percent!=1])
+min(percent$V1)
+median(percent$V1)
+mean(percent$V1)
+
+length(percent[percent$V1>0.3,])
+```
+
+```{r}
+ipeds2 <- ipeds[,which(colMeans(!is.na(ipeds))>0.3)]
+ipeds2[is.na(ipeds2)] <- 999
+dim(ipeds2)
+head(ipeds2)
+glimpse(ipeds2)
+```
+
+## USML
+```{r}
+## generate the correlation matrix
+ip = ipeds2 %>% 
+  select_if(is.numeric) %>% 
+  select(-UnitID)
+
+ip_cor <- cor(ip)
+
+corrplot(ip_cor, 
+         method = "color", 
+         type="upper", 
+         diag=F,
+         order = "hclust")
+```
+
+
+```{r}
+## pca
+ip_pca = prcomp(ip, center=T, scale=T)
+fviz_screeplot(ip_pca, addlables = T, ylim=c(0, 50))
+get_eigenvalue(ip_pca)
+```
+* Choose dimension of 4/5 - eigenvalue > 1
+* Choose dimension of 10/11 - cumulative variance percent > 90%
+
+```{r}
+fviz_pca_var(ip_pca, col.var = "contrib")
+fviz_contrib(ip_pca, choice="var")
+fviz_contrib(ip_pca, choice="var", axes = 2)
+fviz_contrib(ip_pca, choice = "var", axes = 3)
+```
+
+
+```{r}
+ip_pcs <- predict(ip_pca, newdata=ip)  ## the numeric data
+ip_pcs <- as.data.frame(ip_pcs)
+ip_pc <- ip_pcs[, 1:4]  ## keep 4 dimensions, based on eighenvalue
+head(ip_pc)
+```
+
+```{r}
+ip_pcz <- scale(ip_pc)
+
+ip_pcz_wss = function(k) {
+  km = kmeans(ip_pcz, k, nstart = 25, iter.max = 25)
+  kwss = km$tot.withinss
+  return(kwss)
+  }
+
+k <- 1:20
+wss_vals <- map_dbl(k, ip_pcz_wss)
+plot(k, wss_vals, type = "b", main = "WSS Judges K Eval")
+
+sample <- ip_pcz[sample(1, nrow(ip_pcz), 10000),]
+```
+
+```{r}
+# fviz_nbclust(sample, FUNcluster = kmeans, method = "silhouette")
+## can't work, don't know why
+```
+
+
+```{r}
+ip_kmeans5 <- kmeans(x = ip_pcz, centers = 5, iter.max = 25, nstart = 25)
+fviz_cluster(ip_kmeans5, data = ip_pcs)
+```
+
+
+```{r}
+table(ip_kmeans5$cluster)
+```
+
+```{r}
+ipeds$cluster <- ip_kmeans5$cluster
+
+ipeds %>% 
+  group_by(cluster) %>% 
+  summarise(mean = mean(LOAN_A, na.rm = T))
+
+ipeds2 %>% 
+  group_by(cluster) %>% 
+  summarise(mean = mean(LOAN_A, na.rm = T))
+```
+
