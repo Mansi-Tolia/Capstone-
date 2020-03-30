@@ -1,0 +1,197 @@
+---
+title: "Untitled"
+author: "Lyufan Pan"
+date: "March 19, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(data.table)
+# install.packages("corrplot")
+library(corrplot)
+# install.packages("factoextra")
+library(factoextra)
+```
+
+```{r}
+data <- readRDS("combined.rds")
+data <- data.table(data)
+data[data==999] <- NA
+
+data$default <- rowMeans(data[,c("CDR2","CDR3")], na.rm = T)
+```
+
+```{r}
+data %>% select(starts_with("PCIP")) -> pcip
+pcip <- na.omit(pcip)
+
+pcip_cor <- cor(pcip)
+
+corrplot(pcip_cor,
+         method = "color",
+         type = "upper",
+         diag = F,
+         order = "hclust",
+         rm.na = T)
+```
+
+```{r}
+data %>% select(starts_with("PCIP"), CDR2) -> data1
+summary(lm(CDR2 ~., data1))
+```
+
+```{r}
+data %>% 
+  select_if(is.numeric) %>%
+  select(-UnitID, -OPEID, -starts_with("PCIP")) -> data2
+summary(lm(CDR2 ~ ., data2))
+```
+
+```{r}
+data[!is.na(default),] ->data2
+```
+
+```{r}
+# install.packages("randomForest")
+library(randomForest)
+set.seed(1234)
+d_rf <- data2
+d_rf$train <- sample(c(0, 1), nrow(d_rf), replace = TRUE, prob = c(0.2, 0.8))
+d_rf_test <- d_rf %>% filter(train == 0)
+d_rf_train <- d_rf %>% filter(train == 1)
+
+## Cleaning
+cat_name <- names(d_rf)
+cat_name <- cat_name[!cat_name %in% c("default","CDR2","CDR3","UnitID", "Institution Name", "ZIP","STABBR","INSTNM", "train","OPEID", "OPEID6")]
+loopformula <- "default ~ 1"
+for (name in cat_name) {
+loopformula <- paste(loopformula, "+", name, sep = "")
+}
+f_rf <- as.formula(loopformula)
+
+#Train/Test
+x1_train <- model.matrix(f_rf, d_rf_train)[, -1]
+y_train <- d_rf_train$default
+x1_test <- model.matrix(f_rf, d_rf_test)[, -1]
+y_test <- d_rf_test$default
+
+#RF fit
+fit_rf <- randomForest(f_rf,
+d_rf_train,
+ntree=10,
+do.trace=T)
+
+#Plot RF fit
+varImpPlot(fit_rf)
+
+#Predict
+yhat_rf_train <- predict(fit_rf, d_rf_train)
+mse_rf <- mean((yhat_rf_train -d_rf_train$default) ^ 2)
+yhat_rf_test <- predict(fit_rf, d_rf_test)
+mse_rf_test <- mean((yhat_rf_test - d_rf_test$default) ^ 2)
+```
+```{r}
+loopformula <- "CDR3 ~ 1"
+for (name in cat_name) {
+loopformula <- paste(loopformula, "+", name, sep = "")
+}
+f_rf <- as.formula(loopformula)
+
+#Train/Test
+x1_train <- model.matrix(f_rf, d_rf_train)[, -1]
+y_train <- d_rf_train$CDR3
+x1_test <- model.matrix(f_rf, d_rf_test)[, -1]
+y_test <- d_rf_test$CDR3
+
+#RF fit
+fit_rf <- randomForest(f_rf,
+d_rf_train,
+ntree=10,
+do.trace=T)
+
+#Plot RF fit
+varImpPlot(fit_rf)
+
+#Predict
+yhat_rf_train <- predict(fit_rf, d_rf_train)
+mse_rf <- mean((yhat_rf_train -d_rf_train$CDR3) ^ 2)
+yhat_rf_test <- predict(fit_rf, d_rf_test)
+mse_rf_test <- mean((yhat_rf_test - d_rf_test$CDR3) ^ 2)
+```
+
+
+```{r}
+colSums(is.na(pcip))/nrow(pcip)
+```
+
+
+```{r}
+hist(data$CDR2, main = "Histogram of two-year cohort default rate",
+     xlab = "Two-year cohort default rate")
+```
+
+```{r}
+hist(data$CDR3, main = "Histogram of three-year cohort default rate",
+     xlab = "Three-year cohort default rate")
+```
+
+```{r}
+ggplot(data, aes(CDR2, CDR3, color = as.factor(year))) +
+  geom_point()
+```
+
+
+```{r}
+## generate the correlation matrix
+data3 = data %>%
+  select_if(is.numeric) %>%
+  select(-UnitID, -OPEID)
+
+data_cor <- cor(data3)
+
+corrplot(data_cor,
+         method = "color",
+         type = "upper",
+         diag = F,
+         order = "hclust",
+         rm.na = T)
+```
+
+```{r}
+ggplot(data, aes(x = year, y = CDR2, group = year))+
+  geom_boxplot() +
+  scale_x_continuous(breaks=seq(min(data$year), max(data$year), 1))+
+  labs(x = "Year", y="two-year cohort default rate",
+       title = "Boxplot of two-year cohort default rate ")
+```
+
+```{r}
+ggplot(data, aes(x = year, y = CDR3, group = year))+
+  geom_boxplot() +
+  scale_x_continuous(breaks=seq(min(data$year), max(data$year), 1))+
+  labs(x = "Year", y="Three year cohort default rate",
+       title = "Boxplot of three year cohort default rate")
+```
+
+```{r}
+ggplot(data, aes(x = GRRTWH, y = mean(CDR2,na.rm = T)))+
+  geom_bar(stat = "identity")
+```
+
+```{r}
+ggplot(data, aes(x = REGION, y = GRRTWH, group = REGION))+
+  geom_boxplot()+
+  scale_x_continuous(breaks=seq(0, 8, 1))
+```
+
+
+```{r}
+## pca
+data_pca = prcomp(data, center=T, scale=T)
+
+fviz_screeplot(data_pca, addlables = T, ylim=c(0, 50))
+get_eigenvalue(data_pca)
+```
+
