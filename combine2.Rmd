@@ -4,7 +4,7 @@ author: "Lyufan Pan"
 date: "March 19, 2020"
 output: html_document
 ---
-
+Load those libraries!!
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
@@ -15,6 +15,7 @@ library(readr)
 library(matrixStats)
 ```
 
+# Data cleaning
 ```{r}
 #load
 scorecard <- readRDS("~/Desktop/cleaned_scorecard.rds")
@@ -26,9 +27,7 @@ names(ipeds) <- tolower(names(ipeds))
 
 #merge datasets based on unitid and year
 combined <- merge(ipeds, scorecard, by = c("unitid", "year"))
-```
 
-```{r}
 #remove empty columns or duplicates 
 combined$countycd <- NULL
 combined$countynm <- NULL
@@ -39,6 +38,7 @@ combined$opeid6 <- NULL
 combined$city <- NULL
 ```
 
+# Kmeans on PCIP
 ```{r}
 #kmeans cluster analysis on pcip
 combined %>% select(starts_with("pcip"), "unitid") -> pcip
@@ -67,6 +67,9 @@ merge(combined, pcip, by = "unitid" )
 
 
 
+
+
+# Experimenting with data loss based on `NA` removal
 ```{r}
 # remove columns with less than X% NA
 twenty <- combined[, which((colSums(is.na(combined)) / nrow(combined)) > 0.2) ]
@@ -75,15 +78,22 @@ seventy <- combined[, which((colSums(is.na(combined)) / nrow(combined)) > 0.7) ]
 ```
 
 
+
+# Imputation - create various copies of `combined` using different imputation methods
+Impute column-wise median values grouped by year
 ```{r}
 #imputation
 combined %>%
   select_if(is.numeric) %>%
   group_by(year) %>%
   summarise_at(vars(-unitid), funs(median(., na.rm=TRUE)))
-
 ```
 
+
+
+# Function
+Create a function that takes in a dataframe (some version of combined after imputing), runs a model (RF), and records out-of-sample MSE on a log.  
+function(dataframe version, model name, other params)
 
 
 
