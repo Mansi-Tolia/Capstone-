@@ -9,22 +9,110 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(data.table)
-# install.packages("corrplot")
 library(corrplot)
-# install.packages("factoextra")
 library(factoextra)
+library(readr)
+library(matrixStats)
 ```
 
 ```{r}
-data <- data.table(readRDS("combined.rds"))
-data[data==999] <- NA
+#load
+scorecard <- readRDS("~/Desktop/cleaned_scorecard.rds")
+ipeds <- read_csv("~/Desktop/ipeds.csv")
 
+#clean
+names(scorecard) <- tolower(names(scorecard))
+names(ipeds) <- tolower(names(ipeds))
+
+#merge datasets based on unitid and year
+combined <- merge(ipeds, scorecard, by = c("unitid", "year"))
+```
+
+```{r}
+#remove empty columns or duplicates 
+combined$countycd <- NULL
+combined$countynm <- NULL
+combined$locale2 <- NULL
+combined$`institution name` <- NULL
+combined$opeid <- NULL
+combined$opeid6 <- NULL
+combined$city <- NULL
+```
+
+```{r}
+#kmeans cluster analysis on pcip
+combined %>% select(starts_with("pcip"), "unitid") -> pcip
+
+#filter out empty rows
+fil <- rowSums(is.na(pcip)) != max(rowSums(is.na(pcip)))
+pcip <- pcip[fil,]
+
+#kmeans - 4clusters
+p <- scale(pcip[,-1])
+k4 <- kmeans(p, centers = 4, iter.max = 25, nstart = 25)
+#fviz_cluster(k4, data = p)
+
+#check table of clusters
+table(pcip$cluster)
+
+#add cluster assignment and drop all pcip cols
+pcip$cluster <- k4$cluster
+pcip <- pcip %>% select(unitid, cluster)
+
+# merge to combined
+merge(combined, pcip, by = "unitid" )
+```
+
+
+
+
+
+```{r}
+# remove columns with less than X% NA
+twenty <- combined[, which((colSums(is.na(combined)) / nrow(combined)) > 0.2) ]
+fifty <- combined[, which((colSums(is.na(combined)) / nrow(combined)) > 0.5) ]
+seventy <- combined[, which((colSums(is.na(combined)) / nrow(combined)) > 0.7) ]
+```
+
+
+```{r}
+#imputation
+combined %>%
+  select_if(is.numeric) %>%
+  group_by(year) %>%
+  summarise_at(vars(-unitid), funs(median(., na.rm=TRUE)))
+
+```
+
+
+
+
+
+
+
+```{r}
+#load
+data <- data.table(readRDS("~/Desktop/combined.rds"))
+
+#combine default rates
 data$default <- rowMeans(data[,c("CDR2","CDR3")], na.rm = T)
+
+#school didn't report it/change default NAs to 0
+data$default[is.na(data$default)] <- 0
 ```
 
 ```{r}
-data$default[is.na(data$default)] <- 0
-summary(data$default)
+skimr::skim(data)
+```
+
+
+
+
+
+
+
+```{r}
+#data[data==999] <- NA
 ```
 
 
