@@ -18,8 +18,8 @@ library(matrixStats)
 # Data cleaning
 ```{r}
 #load
-scorecard <- readRDS("~/Desktop/cleaned_scorecard.rds")
-ipeds <- read_csv("~/Desktop/ipeds.csv")
+scorecard <- readRDS("cleaned_scorecard.rds")
+ipeds <- read_csv("ipeds.csv")
 
 #clean
 names(scorecard) <- tolower(names(scorecard))
@@ -57,16 +57,44 @@ table(pcip$cluster)
 
 #add cluster assignment and drop all pcip cols
 pcip$cluster <- k4$cluster
-pcip <- pcip %>% select(unitid, cluster)
+pcip1 <- pcip %>% select(unitid, cluster)
 
 # merge to combined
-merge(combined, pcip, by = "unitid" )
+merge(combined, pcip1, by = "unitid" )
 ```
 
+# PCA on PCIP
+```{r}
+## generate the correlation matrix
+pcip %>% 
+  select(-unitid, -cluster) -> pcip2
 
+pcip_cor <- cor(pcip2)
 
+corrplot(pcip_cor, 
+         method = "color", 
+         type="upper", 
+         diag=F,
+         order = "hclust")
+```
 
+```{r}
+## pca
+pcip_pca = prcomp(pcip2, center=T, scale=T)
+fviz_screeplot(pcip_pca, addlables = T, ylim=c(0, 20))
+get_eigenvalue(pcip_pca)
+```
 
+```{r}
+fviz_pca_var(pcip_pca, col.var = "contrib")
+fviz_contrib(pcip_pca, choice="var")
+fviz_contrib(pcip_pca, choice="var", axes = 2)
+fviz_contrib(pcip_pca, choice = "var", axes = 3)
+```
+
+```{r}
+
+```
 
 
 # Experimenting with data loss based on `NA` removal
