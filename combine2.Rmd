@@ -4,6 +4,11 @@ author: "Lyufan Pan"
 date: "March 19, 2020"
 output: html_document
 ---
+
+# Student Loan Default Rate
+
+-----
+
 Load those libraries!!
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -13,13 +18,14 @@ library(corrplot)
 library(factoextra)
 library(readr)
 library(matrixStats)
+library(randomForest)
 ```
 
 # Data cleaning
-```{r}
+```{r message=FALSE, warning=FALSE}
 #load
-scorecard <- readRDS("cleaned_scorecard.rds")
-ipeds <- read_csv("ipeds.csv")
+scorecard <- readRDS("~/Desktop/cleaned_scorecard.rds")
+ipeds <- read_csv("~/Desktop/ipeds.csv")
 
 #clean
 names(scorecard) <- tolower(names(scorecard))
@@ -36,32 +42,37 @@ combined$`institution name` <- NULL
 combined$opeid <- NULL
 combined$opeid6 <- NULL
 combined$city <- NULL
+
+#combine default rates
+combined$default <- rowMeans(combined[,c("cdr2","cdr3")], na.rm = T)
 ```
 
-# Kmeans on PCIP
+-----
+
+## Kmeans on PCIP
 ```{r}
 #kmeans cluster analysis on pcip
-combined %>% select(starts_with("pcip"), "unitid") -> pcip
+combined %>% select(starts_with("pcip"), "unitid", 'year') -> pcip
 
 #filter out empty rows
-fil <- rowSums(is.na(pcip)) != max(rowSums(is.na(pcip)))
-pcip <- pcip[fil,]
+pcip <- pcip[rowSums(is.na(pcip)) != max(rowSums(is.na(pcip))), ]
 
 #kmeans - 4clusters
-p <- scale(pcip[,-1])
+p <- pcip %>% select(-c("unitid", 'year')) %>% scale()
 k4 <- kmeans(p, centers = 4, iter.max = 25, nstart = 25)
 #fviz_cluster(k4, data = p)
 
 #check table of clusters
-table(pcip$cluster)
+table(k4$cluster)
 
 #add cluster assignment and drop all pcip cols
 pcip$cluster <- k4$cluster
-pcip1 <- pcip %>% select(unitid, cluster)
+pcip1 <- pcip %>% select(unitid, year, cluster)
 
 # merge to combined
-merge(combined, pcip1, by = "unitid" )
+df_k4cluster <- inner_join(combined, pcip1, by = c("unitid", "year") )
 ```
+
 
 # PCA on PCIP
 ```{r}
@@ -78,23 +89,22 @@ corrplot(pcip_cor,
          order = "hclust")
 ```
 
+Learned that PCIP only really explain about 12% of the variance in the data, maybe let's not use them or rely on them heavily.
 ```{r}
-## pca
+# pca
 pcip_pca = prcomp(pcip2, center=T, scale=T)
 fviz_screeplot(pcip_pca, addlables = T, ylim=c(0, 20))
 get_eigenvalue(pcip_pca)
-```
 
-```{r}
+#visualize
 fviz_pca_var(pcip_pca, col.var = "contrib")
-fviz_contrib(pcip_pca, choice="var")
-fviz_contrib(pcip_pca, choice="var", axes = 2)
+fviz_contrib(pcip_pca, choice = "var")
+fviz_contrib(pcip_pca, choice = "var", axes = 2)
 fviz_contrib(pcip_pca, choice = "var", axes = 3)
 ```
 
-```{r}
 
-```
+
 
 
 # Experimenting with data loss based on `NA` removal
@@ -108,14 +118,66 @@ seventy <- combined[, which((colSums(is.na(combined)) / nrow(combined)) > 0.7) ]
 
 
 # Imputation - create various copies of `combined` using different imputation methods
-Impute column-wise median values grouped by year
+
+1. Impute column-wise median values grouped by year
 ```{r}
-#imputation
-combined %>%
-  select_if(is.numeric) %>%
-  group_by(year) %>%
-  summarise_at(vars(-unitid), funs(median(., na.rm=TRUE)))
+medians_by_year <- function(df){
+  
+  #select only numeric columns
+  numeric <- df %>% select_if(is.numeric)
+  
+  #calculate col-wise medians grouped by the year
+  medians <- numeric %>%
+    group_by(year) %>%
+    summarise_at(vars(-unitid), funs(median(., na.rm=TRUE)))
+  
+  #pivot those bad boys
+  numeric_long <- pivot_longer(numeric, npt412:tail(names(df),1))
+  medians_long <- pivot_longer(medians, npt412:tail(names(df),1))
+  
+  #join by identifying year and name
+  joined <- left_join(numeric_long, medians_long, by = c("year", "name"))
+  
+  #keep only filled value
+  joined$lyufan <- ifelse(is.na(joined$value.x) == T, joined$value.y, joined$value.x)
+  
+  #get rid of the old data
+  joined$value.x <- NULL
+  joined$value.y <- NULL
+  
+  #new df!
+  df_medians <- pivot_wider(joined, names_from = name, values_from = lyufan)
+  
+  #return
+  return(df_medians)
+}
+
+#no cluster
+df_medians <- medians_by_year(combined)
+
+#check NAs
+#colSums(is.na(df_medians))
+
+#get rid of anything left that has over 10k NAs
+df_medians <- df_medians[, colSums(is.na(df_medians)) < 10000]
+
+#with cluster
+df_medians_c <- medians_by_year(df_k4cluster)
 ```
+
+2. Replace all NA values in original df with 0 (uni didn't report them or keep track scenario)
+```{r}
+#school didn't report it/change default NAs to 0
+replace_na(combined, 0)
+```
+
+3. Combine `df_medians` an replace with 0
+```{r}
+df_medians[is.na(df_medians), ] <- 0
+```
+
+
+
 
 
 
@@ -123,81 +185,21 @@ combined %>%
 Create a function that takes in a dataframe (some version of combined after imputing), runs a model (RF), and records out-of-sample MSE on a log.  
 function(dataframe version, model name, other params)
 
-
-
-
-
-
+TO DO: transform RF to a function that can take in versions of our data below
 ```{r}
-#load
-data <- data.table(readRDS("~/Desktop/combined.rds"))
-
-#combine default rates
-data$default <- rowMeans(data[,c("CDR2","CDR3")], na.rm = T)
-
-#school didn't report it/change default NAs to 0
-data$default[is.na(data$default)] <- 0
-```
-
-```{r}
-skimr::skim(data)
-```
+##THIS STILL HAS BUGS AND NEED TO BE FIXED
 
 
-
-
-
-
-
-```{r}
-#data[data==999] <- NA
-```
-
-
-
-```{r}
-data %>% select(starts_with("PCIP")) -> pcip
-pcip <- na.omit(pcip)
-
-pcip_cor <- cor(pcip)
-
-corrplot(pcip_cor,
-         method = "color",
-         type = "upper",
-         diag = F,
-         order = "hclust",
-         rm.na = T)
-```
-
-```{r}
-data %>% select(starts_with("PCIP"), CDR2) -> data1
-summary(lm(CDR2 ~., data1))
-```
-
-```{r}
-data %>% 
-  select_if(is.numeric) %>%
-  select(-UnitID, -OPEID, -starts_with("PCIP")) -> data2
-summary(lm(CDR2 ~ ., data2))
-```
-
-```{r}
-# data[!is.na(default),] -> data2
-```
-
-```{r}
-# install.packages("randomForest")
-library(randomForest)
 set.seed(1234)
-d_rf <- data
+d_rf <- df_medians
 d_rf$train <- sample(c(0, 1), nrow(d_rf), replace = TRUE, prob = c(0.2, 0.8))
 d_rf_test <- d_rf %>% filter(train == 0)
 d_rf_train <- d_rf %>% filter(train == 1)
 
 ## Cleaning
 cat_name <- names(d_rf)
-cat_name <- cat_name[!cat_name %in% c("default","CDR2","CDR3","UnitID", "Institution Name", "ZIP","STABBR","INSTNM", "train","OPEID", "OPEID6")]
-loopformula <- "default ~ 1"
+cat_name <- cat_name[!cat_name %in% c("default","cdr2","cdr3","unitid", "zip","stabbr","instnm", "train")]
+loopformula <- "cdr2 ~ 1"
 for (name in cat_name) {
 loopformula <- paste(loopformula, "+", name, sep = "")
 }
@@ -224,6 +226,9 @@ mse_rf <- mean((yhat_rf_train -d_rf_train$default) ^ 2)
 yhat_rf_test <- predict(fit_rf, d_rf_test)
 mse_rf_test <- mean((yhat_rf_test - d_rf_test$default) ^ 2)
 ```
+
+
+
 ```{r}
 loopformula <- "CDR3 ~ 1"
 for (name in cat_name) {
@@ -252,78 +257,3 @@ mse_rf <- mean((yhat_rf_train -d_rf_train$CDR3) ^ 2)
 yhat_rf_test <- predict(fit_rf, d_rf_test)
 mse_rf_test <- mean((yhat_rf_test - d_rf_test$CDR3) ^ 2)
 ```
-
-
-```{r}
-colSums(is.na(pcip))/nrow(pcip)
-```
-
-
-```{r}
-hist(data$CDR2, main = "Histogram of two-year cohort default rate",
-     xlab = "Two-year cohort default rate")
-```
-
-```{r}
-hist(data$CDR3, main = "Histogram of three-year cohort default rate",
-     xlab = "Three-year cohort default rate")
-```
-
-```{r}
-ggplot(data, aes(CDR2, CDR3, color = as.factor(year))) +
-  geom_point()
-```
-
-
-```{r}
-## generate the correlation matrix
-data3 = data %>%
-  select_if(is.numeric) %>%
-  select(-UnitID, -OPEID)
-
-data_cor <- cor(data3)
-
-corrplot(data_cor,
-         method = "color",
-         type = "upper",
-         diag = F,
-         order = "hclust",
-         rm.na = T)
-```
-
-```{r}
-ggplot(data, aes(x = year, y = CDR2, group = year))+
-  geom_boxplot() +
-  scale_x_continuous(breaks=seq(min(data$year), max(data$year), 1))+
-  labs(x = "Year", y="two-year cohort default rate",
-       title = "Boxplot of two-year cohort default rate ")
-```
-
-```{r}
-ggplot(data, aes(x = year, y = CDR3, group = year))+
-  geom_boxplot() +
-  scale_x_continuous(breaks=seq(min(data$year), max(data$year), 1))+
-  labs(x = "Year", y="Three year cohort default rate",
-       title = "Boxplot of three year cohort default rate")
-```
-
-```{r}
-ggplot(data, aes(x = GRRTWH, y = mean(CDR2,na.rm = T)))+
-  geom_bar(stat = "identity")
-```
-
-```{r}
-ggplot(data, aes(x = REGION, y = GRRTWH, group = REGION))+
-  geom_boxplot()+
-  scale_x_continuous(breaks=seq(0, 8, 1))
-```
-
-
-```{r}
-## pca
-data_pca = prcomp(data, center=T, scale=T)
-
-fviz_screeplot(data_pca, addlables = T, ylim=c(0, 50))
-get_eigenvalue(data_pca)
-```
-
