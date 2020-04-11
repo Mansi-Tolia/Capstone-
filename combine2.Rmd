@@ -119,7 +119,7 @@ seventy <- combined[, which((colSums(is.na(combined)) / nrow(combined)) > 0.7) ]
 
 # Imputation - create various copies of `combined` using different imputation methods
 
-1. Impute column-wise median values grouped by year
+Impute column-wise median values grouped by year
 ```{r}
 medians_by_year <- function(df){
   
@@ -152,30 +152,43 @@ medians_by_year <- function(df){
   return(df_medians)
 }
 
-#no cluster
-df_medians <- medians_by_year(combined)
+
 
 #check NAs
 #colSums(is.na(df_medians))
+```
+
+# Df Versions
+
+1. Median imputation by year without cluster
+```{r}
+#no cluster
+df_medians <- medians_by_year(combined)
 
 #get rid of anything left that has over 10k NAs
 df_medians <- df_medians[, colSums(is.na(df_medians)) < 10000]
 
-#with cluster
-df_medians_c <- medians_by_year(df_k4cluster)
+#empty out remaining NAs
+df_medians[is.na(df_medians)] <- 0
 ```
 
-2. Replace all NA values in original df with 0 (uni didn't report them or keep track scenario)
+2. Median imputation by year with cluster
+```{r}
+#no cluster
+df_medians_c <- medians_by_year(df_k4cluster)
+
+#get rid of anything left that has over 10k NAs
+df_medians_c <- df_medians_c[, colSums(is.na(df_medians_c)) < 10000]
+
+#empty out remaining NAs
+df_medians_c[is.na(df_medians_c)] <- 0
+```
+
+3. Replace all NA values in original df with 0 (uni didn't report them or keep track scenario)
 ```{r}
 #school didn't report it/change default NAs to 0
-replace_na(combined, 0)
+combined_zeroes <- combined[is.na(combined) ] <- 0
 ```
-
-3. Combine `df_medians` an replace with 0
-```{r}
-df_medians[is.na(df_medians), ] <- 0
-```
-
 
 
 
@@ -184,76 +197,72 @@ df_medians[is.na(df_medians), ] <- 0
 # Function
 Create a function that takes in a dataframe (some version of combined after imputing), runs a model (RF), and records out-of-sample MSE on a log.  
 function(dataframe version, model name, other params)
-
-TO DO: transform RF to a function that can take in versions of our data below
 ```{r}
 ##THIS STILL HAS BUGS AND NEED TO BE FIXED
 
-
-set.seed(1234)
-d_rf <- df_medians
-d_rf$train <- sample(c(0, 1), nrow(d_rf), replace = TRUE, prob = c(0.2, 0.8))
-d_rf_test <- d_rf %>% filter(train == 0)
-d_rf_train <- d_rf %>% filter(train == 1)
-
-## Cleaning
-cat_name <- names(d_rf)
-cat_name <- cat_name[!cat_name %in% c("default","cdr2","cdr3","unitid", "zip","stabbr","instnm", "train")]
-loopformula <- "cdr2 ~ 1"
-for (name in cat_name) {
-loopformula <- paste(loopformula, "+", name, sep = "")
+rf <- function(df){
+ 
+  set.seed(1234)
+    
+  #split into train and test
+  split_index <- sample(nrow(df), nrow(df)*0.8)
+  df_train <- df[split_index, ]
+  df_test <- df[-split_index, ]
+  
+  print("Data split successfully")
+  
+  #get rid of unnecessary columns for rf
+  cat_names <- names(df)
+  cat_names <- cat_names[!cat_names %in% c("cdr2","cdr3","unitid", "zip","stabbr","instnm", "train", "default")]
+  loopformula <- "default ~ 1"
+  
+  #create formula
+  for(name in cat_names){
+    loopformula <- paste(loopformula, "+", name, sep = '')
+  }
+  formula <- as.formula(loopformula)
+  
+  print("Formula made successfully")
+  
+  #Train/Test
+  x_train <- model.matrix(formula, df_train)[,-1]
+  y_train <- df_train$default
+  
+  x_test <- model.matrix(formula, df_test)[, -1]
+  y_test <- df_test$default
+  
+  print("Model.matrix good")
+  
+  #RF fit
+  fit_rf <- randomForest(formula,
+                         df_train,
+                         ntree=5,
+                         do.trace=T)
+  
+  print("tree works")
+    
+  #Plot RF fit
+  varImpPlot(fit_rf)
+  
+  print("varimp yay")
+  
+  #Predict
+  yhat_rf_train <- predict(fit_rf, df_train)
+  mse_rf <- mean((yhat_rf_train -df_train$default) ^ 2)
+  print(paste("Train MSE: ", mse_rf))
+  
+  yhat_rf_test <- predict(fit_rf, df_test)
+  mse_rf_test <- mean((yhat_rf_test - df_test$default) ^ 2)
+  print(paste("Test MSE: ", mse_rf_test))
 }
-f_rf <- as.formula(loopformula)
-
-#Train/Test
-x1_train <- model.matrix(f_rf, d_rf_train)[, -1]
-y_train <- d_rf_train$default
-x1_test <- model.matrix(f_rf, d_rf_test)[, -1]
-y_test <- d_rf_test$default
-
-#RF fit
-fit_rf <- randomForest(f_rf,
-d_rf_train,
-ntree=10,
-do.trace=T)
-
-#Plot RF fit
-varImpPlot(fit_rf)
-
-#Predict
-yhat_rf_train <- predict(fit_rf, d_rf_train)
-mse_rf <- mean((yhat_rf_train -d_rf_train$default) ^ 2)
-yhat_rf_test <- predict(fit_rf, d_rf_test)
-mse_rf_test <- mean((yhat_rf_test - d_rf_test$default) ^ 2)
 ```
 
-
-
+# Test out rf function
 ```{r}
-loopformula <- "CDR3 ~ 1"
-for (name in cat_name) {
-loopformula <- paste(loopformula, "+", name, sep = "")
-}
-f_rf <- as.formula(loopformula)
-
-#Train/Test
-x1_train <- model.matrix(f_rf, d_rf_train)[, -1]
-y_train <- d_rf_train$CDR3
-x1_test <- model.matrix(f_rf, d_rf_test)[, -1]
-y_test <- d_rf_test$CDR3
-
-#RF fit
-fit_rf <- randomForest(f_rf,
-d_rf_train,
-ntree=10,
-do.trace=T)
-
-#Plot RF fit
-varImpPlot(fit_rf)
-
-#Predict
-yhat_rf_train <- predict(fit_rf, d_rf_train)
-mse_rf <- mean((yhat_rf_train -d_rf_train$CDR3) ^ 2)
-yhat_rf_test <- predict(fit_rf, d_rf_test)
-mse_rf_test <- mean((yhat_rf_test - d_rf_test$CDR3) ^ 2)
+rf(df_medians_c)
 ```
+
+
+
+
+
