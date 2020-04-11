@@ -47,9 +47,12 @@ combined$city <- NULL
 combined$default <- rowMeans(combined[,c("cdr2","cdr3")], na.rm = T)
 ```
 
+
 -----
 
-## Kmeans on PCIP
+
+
+# Kmeans on PCIP
 ```{r}
 #kmeans cluster analysis on pcip
 combined %>% select(starts_with("pcip"), "unitid", 'year') -> pcip
@@ -72,7 +75,6 @@ pcip1 <- pcip %>% select(unitid, year, cluster)
 # merge to combined
 df_k4cluster <- inner_join(combined, pcip1, by = c("unitid", "year") )
 ```
-
 
 # PCA on PCIP
 ```{r}
@@ -104,7 +106,7 @@ fviz_contrib(pcip_pca, choice = "var", axes = 3)
 ```
 
 
-
+------
 
 
 # Experimenting with data loss based on `NA` removal
@@ -115,6 +117,8 @@ fifty <- combined[, which((colSums(is.na(combined)) / nrow(combined)) > 0.5) ]
 seventy <- combined[, which((colSums(is.na(combined)) / nrow(combined)) > 0.7) ]
 ```
 
+
+------
 
 
 # Imputation - create various copies of `combined` using different imputation methods
@@ -152,14 +156,15 @@ medians_by_year <- function(df){
   return(df_medians)
 }
 
-
-
 #check NAs
 #colSums(is.na(df_medians))
 ```
 
-# Df Versions
 
+------
+
+
+# Df Versions
 1. Median imputation by year without cluster
 ```{r}
 #no cluster
@@ -190,15 +195,18 @@ df_medians_c[is.na(df_medians_c)] <- 0
 combined_zeroes <- combined[is.na(combined) ] <- 0
 ```
 
+4. Non PCIP Clustering
 
+
+
+------
 
 
 
 # Function
-Create a function that takes in a dataframe (some version of combined after imputing), runs a model (RF), and records out-of-sample MSE on a log.  
-function(dataframe version, model name, other params)
+Create a function that takes in a dataframe (some version of combined after imputing), runs a model (RF), and records out-of-sample MSE on a log. 
 ```{r}
-##THIS STILL HAS BUGS AND NEED TO BE FIXED
+#Kyle update to make log and other troubleshooting
 
 rf <- function(df){
  
@@ -261,6 +269,17 @@ rf <- function(df){
 ```{r}
 rf(df_medians_c)
 ```
+
+
+------
+
+# Segementation between cohorts and schools
+```{r}
+# mansi
+```
+
+
+------
 
 
 
