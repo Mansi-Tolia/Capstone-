@@ -206,10 +206,8 @@ combined_zeroes <- combined[is.na(combined) ] <- 0
 # Function
 Create a function that takes in a dataframe (some version of combined after imputing), runs a model (RF), and records out-of-sample MSE on a log. 
 ```{r}
-#Kyle update to make log and other troubleshooting
-
 rf <- function(df){
- 
+  
   set.seed(1234)
     
   #split into train and test
@@ -257,17 +255,33 @@ rf <- function(df){
   #Predict
   yhat_rf_train <- predict(fit_rf, df_train)
   mse_rf <- mean((yhat_rf_train -df_train$default) ^ 2)
-  print(paste("Train MSE: ", mse_rf))
   
   yhat_rf_test <- predict(fit_rf, df_test)
   mse_rf_test <- mean((yhat_rf_test - df_test$default) ^ 2)
-  print(paste("Test MSE: ", mse_rf_test))
+  
+  #results
+  df_name = deparse(substitute(df))
+  results = list(df_name, mse_rf, mse_rf_test)
+  return(results)
 }
 ```
 
+
+
 # Test out rf function
 ```{r}
-rf(df_medians_c)
+#initialize log
+rf_results <- tibble(name = "name", mse_train = 'mse_train', mse_test = "mse_test")
+
+#for loop to run through df's
+dfs = list(df_medians, df_medians_c, df_k4cluster) #add more when ready
+
+for (i in 1:length(dfs)){
+  result = rf(dfs[i])
+  rf_results %>% add_row(name = result[1],
+                         mse_train = result[2],
+                         mse_test = result[3])
+}
 ```
 
 
