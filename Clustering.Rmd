@@ -127,6 +127,10 @@ radar_gr_gender <- df_medians%>%group_by(cluster) %>%
     grrtm = mean(grrtm, na.rm = T),
     grrtw = mean(grrtw, na.rm = T))
 
+
+
+```
+```{r}
 ##Adding clusters to rownames()
 rownames(radar_pcip) <- paste("cluster" , letters[1:7] , sep="-")
 rownames(radar_act) <- paste("cluster" , letters[1:7] , sep="-")
@@ -141,10 +145,9 @@ radar_act <- radar_act %>% select(-cluster)
 radar_sat <- radar_sat %>% select(-cluster)
 radar_gr_race <- radar_gr_race %>% select(-cluster)
 radar_gr_gender <- radar_gr_gender %>% select(-cluster)
-
 ```
 
-#Radar Chart ased On attributes 
+#Radar Chart ased On PCIP
 ```{r}
 colors_border=c( rgb(0.2,0.5,0.5,0.9), 
                  rgb(0.8,0.2,0.5,0.9),  
@@ -184,7 +187,7 @@ legend(x ="topright",
        cex=0.8, pt.cex=2)
 ```
 
-#Radar Chart based on products
+#Radar Chart based on ACT Scores
 ```{r}
 par(xpd = TRUE, mar = c(0.5, 2, 2, 0.5))
 radarchart( radar_act, axistype=0 , 
@@ -212,7 +215,7 @@ legend(x ="topright",
        cex=0.8, pt.cex=2)
 ```
 
-#Radar Chart based on accessories(2-10)
+#Radar Chart based on SAT Scores
 ```{r}
 radarchart( radar_sat, axistype=0 , 
             maxmin=F,
@@ -237,7 +240,7 @@ legend(x ="topright",
 ```
 
 
-#Radar Chart based on subscription purchases
+#Radar Chart based on Graduation Rates by Race
 ```{r}
 radarchart( radar_gr_race, axistype=1 , 
             maxmin=F,
