@@ -109,42 +109,88 @@ radar_sat <- df_medians%>%group_by(cluster) %>%
 #Preparing Graduation Rates by Race for clustering
 ###################################################################
 
-radar_gr_race <- df_medians%>%group_by(cluster) %>%
+radar_gr_race_gender <- df_medians%>%group_by(cluster) %>%
   summarise(
     grrtwh = mean(grrtwh, na.rm = T),
     grrtbk = mean(grrtbk, na.rm = T),
     grrths = mean(grrths, na.rm = T),
     grrtap = mean(grrtap, na.rm = T),
     grrtan = mean(grrtan, na.rm = T),
-    grrtun = mean(grrtun, na.rm = T))
-
-###################################################################
-#Preparing Graduation Rates by Gender for clustering
-###################################################################
-
-radar_gr_gender <- df_medians%>%group_by(cluster) %>%
-  summarise(
+    grrtun = mean(grrtun, na.rm = T),
     grrtm = mean(grrtm, na.rm = T),
     grrtw = mean(grrtw, na.rm = T))
 
 
+###################################################################
+#Preparing NPT for clustering
+###################################################################
 
+radar_npt <- df_medians%>%group_by(cluster) %>%
+  summarise(
+    npt412 = mean(npt412, na.rm = T),
+    npt422 = mean(npt422, na.rm = T),
+    npt432 = mean(npt432, na.rm = T),
+    npt442 = mean(npt442, na.rm = T),
+    npt452 = mean(npt452, na.rm = T),
+    npt4_pub = mean(npt4_pub, na.rm = T),
+    npt4_priv = mean(npt4_priv, na.rm = T),
+    npt41_pub = mean(npt41_pub, na.rm = T),
+    npt43_pub = mean(npt43_pub, na.rm = T),
+    npt44_pub = mean(npt44_pub, na.rm = T), 
+    npt45_pub = mean(npt45_pub, na.rm = T), 
+    npt41_priv = mean(npt41_priv, na.rm = T),
+    npt42_priv  = mean(npt42_priv, na.rm = T), 
+    npt43_priv = mean(npt43_priv, na.rm = T), 
+    npt44_priv = mean(npt44_priv, na.rm = T),
+    npt45_priv = mean(npt45_priv, na.rm = T))
+
+###################################################################
+#Preparing debt and default rates for clustering
+###################################################################
+
+radar_debt <- df_medians%>%group_by(cluster) %>%
+  summarise(
+    debt_mdn = mean(debt_mdn, na.rm = T),
+    grad_debt_mdn = mean(grad_debt_mdn, na.rm = T),
+    appl_sch_n = mean(appl_sch_n, na.rm = T),
+    default = mean(default, na.rm = T),
+    loan_a = mean(loan_a, na.rm = T),
+    loan_p = mean(loan_p, na.rm = T),
+    floan_a = mean(floan_a, na.rm = T),
+    floan_p = mean(floan_p, na.rm = T),
+    loan_ever = mean(loan_ever, na.rm = T))
+
+
+###################################################################
+#Preparing admission rates for clustering
+###################################################################
+
+radar_admissions <- df_medians%>%group_by(cluster) %>%
+  summarise(
+    dvadm02 = mean(dvadm02, na.rm = T),  
+    dvadm03 = mean(dvadm03, na.rm = T),
+    dvadm05 = mean(dvadm05, na.rm = T),
+    dvadm06 = mean(dvadm06, na.rm = T))
 ```
+
 ```{r}
 ##Adding clusters to rownames()
 rownames(radar_pcip) <- paste("cluster" , letters[1:7] , sep="-")
 rownames(radar_act) <- paste("cluster" , letters[1:7] , sep="-")
 rownames(radar_sat) <- paste("cluster" , letters[1:7] , sep="-")
-rownames(radar_gr_race) <- paste("cluster" , letters[1:7] , sep="-")
-rownames(radar_gr_gender) <- paste("cluster" , letters[1:7] , sep="-")
-
+rownames(radar_gr_race_gender) <- paste("cluster" , letters[1:7] , sep="-")
+rownames(radar_npt) <- paste("cluster" , letters[1:7] , sep="-")
+rownames(radar_debt) <- paste("cluster" , letters[1:7] , sep="-")
+rownames(radar_admissions) <- paste("cluster" , letters[1:7] , sep="-")
 
 ##removing clusters column from tables
 radar_pcip <- radar_pcip %>% select(-cluster)
 radar_act <- radar_act %>% select(-cluster)
 radar_sat <- radar_sat %>% select(-cluster)
-radar_gr_race <- radar_gr_race %>% select(-cluster)
-radar_gr_gender <- radar_gr_gender %>% select(-cluster)
+radar_gr_race_gender <- radar_gr_race_gender %>% select(-cluster)
+radar_npt <- radar_npt %>% select(-cluster)
+radar_debt <- radar_debt %>% select(-cluster)
+radar_admissions <- radar_admissions %>% select(-cluster)
 ```
 
 #Radar Chart ased On PCIP
@@ -152,17 +198,17 @@ radar_gr_gender <- radar_gr_gender %>% select(-cluster)
 colors_border=c( rgb(0.2,0.5,0.5,0.9), 
                  rgb(0.8,0.2,0.5,0.9),  
                  rgb(0.7,0.5,0.1,0.9),
-                 rgb(0.128,0,0.128),
-                 rgb(0.128,0,0),
-                 rgb(0,0.100,0),
-                 rgb(0.25,0.25,0.112))
+                 rgb(0.2,0,0,0.9),
+                 rgb(0,0.9,0,0.9),
+                 rgb(0,0.10,0,0.9),
+                 rgb(0.5,0.25,0.112,0.9))
 colors_in=c( rgb(0.2,0.5,0.5,0.4), 
              rgb(0.8,0.2,0.5,0.4) , 
              rgb(0.7,0.5,0.1,0.4),
-             rgb(0.216,0.191,0.216),
-             rgb(0.220,0.20,0.60),
-             rgb(0.144,0.238,0.144),
-             rgb(0,0.191,0.255))
+             rgb(0.2,0,0,0.2),
+             rgb(0,0.9,0,0.2),
+             rgb(0,0.10,0,0.2),
+             rgb(0.5,0.25,0.112,0.2))
 
 par(xpd = TRUE, mar = c(1, 2, 2,1))
 # plot with default options:
@@ -176,7 +222,7 @@ radarchart( radar_pcip, axistype=0,
             cglwd=0.8,
             #custom labels
             vlcex=0.8,
-            title = "Clustering On Attributes")
+            title = "Clustering On PCIP")
 
 # Add a legend
 legend(x ="topright",
@@ -204,7 +250,7 @@ radarchart( radar_act, axistype=0 ,
             centerzero = TRUE,
             #custom labels
             vlcex=,
-            title = "Clustering on Products")
+            title = "Clustering on ACT Scores")
 
 # Add a legend
 legend(x ="topright",
@@ -228,7 +274,7 @@ radarchart( radar_sat, axistype=0 ,
             cglwd=0.8,
             #custom labels
             vlcex=0.8,
-            title = "Clustering on Accessories")
+            title = "Clustering on SAT Scores")
 
 # Add a legend
 legend(x ="topright",
@@ -240,9 +286,9 @@ legend(x ="topright",
 ```
 
 
-#Radar Chart based on Graduation Rates by Race
+#Radar Chart based on Graduation Rates by Race and Gender
 ```{r}
-radarchart( radar_gr_race, axistype=1 , 
+radarchart( radar_gr_race_gender, axistype=1 , 
             maxmin=F,
             #custom polygon
             pcol=colors_border , pfcol=colors_in , plwd=4 , plty=1,
@@ -253,11 +299,84 @@ radarchart( radar_gr_race, axistype=1 ,
             cglwd=0.8,
             #custom labels
             vlcex=0.8,
-            title = "Clustering on Subscription Purchases")
+            title = "Clustering on Graduatio Rates by Race and Gender")
 
 # Add a legend
 legend(x ="topright",
-       legend = rownames(radar_gr_race),
+       legend = rownames(radar_gr_race_gender),
+       bty = "n", pch=20 , 
+       col=colors_in , 
+       text.col = "grey", 
+       cex=0.8, pt.cex=2)
+```
+
+
+#Radar Chart based on College Price
+```{r}
+radarchart( radar_npt, axistype=1 , 
+            maxmin=F,
+            #custom polygon
+            pcol=colors_border , pfcol=colors_in , plwd=4 , plty=1,
+            #custom the grid
+            cglcol="grey", 
+            cglty=1, axislabcol="grey", 
+            caxislabels=seq(0,20,5),
+            cglwd=0.8,
+            #custom labels
+            vlcex=0.8,
+            title = "Clustering on College Price")
+
+# Add a legend
+legend(x ="topright",
+       legend = rownames(radar_npt),
+       bty = "n", pch=20 , 
+       col=colors_in , 
+       text.col = "grey", 
+       cex=0.8, pt.cex=2)
+```
+
+#Radar Chart based on Debt
+```{r}
+radarchart( radar_debt, axistype=1 , 
+            maxmin=F,
+            #custom polygon
+            pcol=colors_border , pfcol=colors_in , plwd=4 , plty=1,
+            #custom the grid
+            cglcol="grey", 
+            cglty=1, axislabcol="grey", 
+            caxislabels=seq(0,20,5),
+            cglwd=0.8,
+            #custom labels
+            vlcex=0.8,
+            title = "Clustering on Debt")
+
+# Add a legend
+legend(x ="topright",
+       legend = rownames(radar_debt),
+       bty = "n", pch=20 , 
+       col=colors_in , 
+       text.col = "grey", 
+       cex=0.8, pt.cex=2)
+```
+
+#Radar Chart based on Admission Rates
+```{r}
+radarchart( radar_admissions, axistype=1 , 
+            maxmin=F,
+            #custom polygon
+            pcol=colors_border , pfcol=colors_in , plwd=4 , plty=1,
+            #custom the grid
+            cglcol="grey", 
+            cglty=1, axislabcol="grey", 
+            caxislabels=seq(0,20,5),
+            cglwd=0.8,
+            #custom labels
+            vlcex=0.8,
+            title = "Clustering on Admission Rates")
+
+# Add a legend
+legend(x ="topright",
+       legend = rownames(radar_admissions),
        bty = "n", pch=20 , 
        col=colors_in , 
        text.col = "grey", 
