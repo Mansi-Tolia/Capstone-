@@ -1,7 +1,7 @@
 ---
-title: "Final Clustering"
-author: "Mansi Tolia, Eman Nagib, Adil Wahab, Di Yao"
-date: "3/30/2020"
+title: "Clustering"
+author: "Mansi Tolia"
+date: "4/15/2020"
 output: pdf_document
 ---
 
@@ -22,23 +22,13 @@ library(RColorBrewer)
 library(data.table)
 ```
 
-##Preparing table for Machine Learning
-```{r}
-data <- read_csv("/Users/Eman Nagib/Desktop/Cirkul Data/cleaned_data.csv")
-data$X1<- NULL
-
-##Preparing table for Machine Learning
-df_numerical_vars <- data %>% select(-c(cust_id,row_num,city, state, zip,first_purchase_at, first_subscription_purchase_at, first_trial_kit_purchase_at, prod04_total_count, prod50_total_count, prod51_total_count, prod52_total_count, prod53_total_count, prod54_total_count, prod55_total_count, subtotal, total, order_revenue, year_2017, year_2018, year_2019, year_2020, age))
-
-# Exclude states
-df_numerical_vars <- df_numerical_vars[,-(grep("Alabama", colnames(df_numerical_vars)):grep("Armed_Forces", colnames(df_numerical_vars)))]
-```
-
 ##Performing Clustering
 ```{r}
+
+df_medians <- read_csv("df_medians.csv")
 #Scale dataset:
 df_scaled = scale(df_medians)
-k = kmeans(df_scaled, centers=3, nstart=20, iter.max = 25)
+k = kmeans(df_scaled, centers=7 , nstart=20, iter.max = 25)
 #fviz_cluster(k, data=df_scaled)	
 table(k$cluster)
 
@@ -137,216 +127,13 @@ radar_gr_gender <- df_medians%>%group_by(cluster) %>%
     grrtm = mean(grrtm, na.rm = T),
     grrtw = mean(grrtw, na.rm = T))
 
-# 
-# ###################################################################
-# #Preparing Products for clustering
-# ###################################################################
-# radar_prod <- df_numerical_vars %>%group_by(cluster) %>%
-#   summarise(
-#        prod01_count = mean(prod01_v01_count, na.rm = T),
-#        prod50_count = ((mean(prod50_v01_count, na.rm = T) +
-#                         mean(prod50_v02_count, na.rm = T) +
-#                         mean(prod50_v03_count, na.rm = T) +
-#                         mean(prod50_v04_count, na.rm = T) + 
-#                         mean(prod50_v05_count, na.rm = T) + 
-#                         mean(prod50_v06_count, na.rm = T) +
-#                         mean(prod50_v07_count, na.rm = T) +
-#                         mean(prod50_v08_count, na.rm = T) +
-#                         mean(prod50_v09_count, na.rm = T) +
-#                         mean(prod50_v10_count, na.rm = T) +
-#                         mean(prod50_v11_count, na.rm = T) +
-#                         mean(prod50_v12_count, na.rm = T))),  
-#     prod51_count = ((mean(prod51_v01_count, na.rm = T) +
-#                         mean(prod51_v02_count, na.rm = T) + 
-#                         mean(prod51_v04_count, na.rm = T) +
-#                         mean(prod51_v05_count, na.rm = T))),
-#     prod52_count = ((mean(prod52_v01_count, na.rm = T) +
-#                          mean(prod52_v02_count, na.rm = T) +  
-#                          mean(prod52_v03_count, na.rm = T) +
-#                          mean(prod52_v05_count, na.rm = T) +  
-#                          mean(prod52_v06_count, na.rm = T) +  
-#                          mean(prod52_v07_count, na.rm = T)+ 
-#                          mean(prod52_v08_count, na.rm = T))),
-#     prod53_count = ((mean(prod53_v01_count, na.rm = T) +
-#                     mean(prod53_v02_count, na.rm = T))),
-#     prod54_count = ((mean(prod54_v01_count, na.rm = T)+
-#                     mean(prod54_v02_count, na.rm = T)+
-#                     mean(prod54_v03_count, na.rm = T)+
-#                     mean(prod54_v04_count, na.rm = T)+
-#                     mean(prod54_v05_count, na.rm = T)+
-#                     mean(prod54_v06_count, na.rm = T)+
-#                     mean(prod54_v07_count, na.rm = T)+
-#                     mean(prod55_v01_count, na.rm = T))),
-#     prod55_count =(mean(prod55_v02_count, na.rm = T) +
-#                      mean(prod55_v03_count, na.rm = T) +
-#                      mean(prod55_v04_count, na.rm = T) +
-#                      mean(prod55_v05_count, na.rm = T) + 
-#                      mean(prod55_v06_count, na.rm = T) +
-#                      mean(prod55_v07_count, na.rm = T) +
-#                      mean(prod55_v08_count, na.rm = T)))
-# 
-# radar_prod50 <- df_numerical_vars %>%group_by(cluster) %>%
-#   summarise(
-#             prod50_v01_count = mean(prod50_v01_count, na.rm = T),
-#             prod50_v02_count = mean(prod50_v02_count, na.rm = T), 
-#             prod50_v03_count = mean(prod50_v03_count, na.rm = T),
-#             prod50_v04_count = mean(prod50_v04_count, na.rm = T), 
-#             prod50_v05_count = mean(prod50_v05_count, na.rm = T), 
-#             prod50_v06_count = mean(prod50_v06_count, na.rm = T), 
-#             prod50_v07_count =mean(prod50_v07_count, na.rm = T),
-#             prod50_v08_count = mean(prod50_v08_count, na.rm = T),
-#             prod50_v09_count =mean(prod50_v09_count, na.rm = T),  
-#             prod50_v10_count =mean(prod50_v10_count, na.rm = T),  
-#             prod50_v11_count =mean(prod50_v11_count, na.rm = T),  
-#             prod50_v12_count =mean(prod50_v12_count, na.rm = T))
-# 
-# radar_prod51 <- df_numerical_vars %>%group_by(cluster) %>%
-#   summarise(
-#             prod51_v01_count =mean(prod51_v01_count, na.rm = T),  
-#             prod51_v02_count =mean(prod51_v02_count, na.rm = T),  
-#             prod51_v03_count =mean(prod51_v03_count, na.rm = T),  
-#             prod51_v04_count =mean(prod51_v04_count, na.rm = T),  
-#             prod51_v05_count =mean(prod51_v05_count, na.rm = T))
-# 
-# radar_prod52 <- df_numerical_vars %>%group_by(cluster) %>%
-#   summarise(
-#             prod52_v01_count =mean(prod52_v01_count, na.rm = T),
-#             prod52_v02_count =mean(prod52_v02_count, na.rm = T),  
-#             prod52_v03_count =mean(prod52_v03_count, na.rm = T),  
-#             prod52_v04_count =mean(prod52_v04_count, na.rm = T),
-#             prod52_v05_count =mean(prod52_v05_count, na.rm = T),  
-#             prod52_v06_count =mean(prod52_v06_count, na.rm = T),  
-#             prod52_v07_count =mean(prod52_v07_count, na.rm = T),  
-#             prod52_v08_count =mean(prod52_v08_count, na.rm = T),
-#             prod53_v01_count =mean(prod53_v01_count, na.rm = T),  
-#             prod53_v02_count =mean(prod53_v02_count, na.rm = T))
-# 
-#     
-# radar_prod53_prod01 <- df_numerical_vars %>%group_by(cluster) %>%
-#   summarise(
-#             prod53_v01_count = mean(prod53_v01_count, na.rm = T),
-#             prod53_v02_count = mean(prod53_v02_count, na.rm = T),
-#             prod01_v01_count = mean(prod01_v01_count, na.rm = T),
-#             prod01_v02_count = mean(prod01_v02_count, na.rm = T))
-# 
-# radar_prod54 <- df_numerical_vars %>%group_by(cluster) %>%
-#   summarise(
-#               prod54_v01_count =mean(prod54_v01_count, na.rm = T),
-#               prod54_v02_count =mean(prod54_v02_count, na.rm = T),  
-#               prod54_v03_count =mean(prod54_v03_count, na.rm = T),
-#               prod54_v04_count =mean(prod54_v04_count, na.rm = T),  
-#               prod54_v05_count =mean(prod54_v05_count, na.rm = T),  
-#               prod54_v06_count =mean(prod54_v06_count, na.rm = T),
-#               prod54_v07_count =mean(prod54_v07_count, na.rm = T))
-# 
-# radar_prod55 <- df_numerical_vars %>%group_by(cluster) %>%
-#   summarise(
-#             prod55_v01_count =mean(prod55_v01_count, na.rm = T),
-#             prod55_v02_count =mean(prod55_v02_count, na.rm = T),  
-#             prod55_v03_count =mean(prod55_v03_count, na.rm = T),
-#             prod55_v04_count =mean(prod55_v04_count, na.rm = T),  
-#             prod55_v05_count =mean(prod55_v05_count, na.rm = T),  
-#             prod55_v06_count =mean(prod55_v06_count, na.rm = T),  
-#             prod55_v07_count =mean(prod55_v07_count, na.rm = T),   
-#             prod55_v08_count =mean(prod55_v08_count, na.rm = T))
-# 
-# ###################################################################
-# #Preparing Subscription purchases' months variables for clustering
-# ###################################################################
-# radar_Sub_purchase <- df_numerical_vars %>%group_by(cluster) %>%
-#   summarise(
-# sub_jan = mean(sub_jan, na.rm = T),
-# sub_feb = mean(sub_feb, na.rm = T),
-# sub_mar = mean(sub_mar, na.rm = T),
-# sub_apr = mean(sub_apr, na.rm = T),
-# sub_may = mean(sub_may, na.rm = T),
-# sub_jun = mean(sub_jun, na.rm = T),
-# sub_jul = mean(sub_jul, na.rm = T),
-# sub_aug = mean(sub_aug, na.rm = T),
-# sub_sep = mean(sub_sep, na.rm = T),
-# sub_oct = mean(sub_oct, na.rm = T),
-# sub_nov = mean(sub_nov, na.rm = T),
-# sub_dec = mean(sub_dec, na.rm = T))
-# 
-# ###################################################################
-# #Preparing Trial purchases' months for clustering
-# ###################################################################
-# radar_trial_purchase <- df_numerical_vars %>%group_by(cluster) %>%
-#   summarise(
-# trial_jan = mean(trial_jan, na.rm = T),
-# trial_feb = mean(trial_feb, na.rm = T),
-# trial_mar = mean(trial_mar, na.rm = T),
-# trial_apr = mean(trial_apr, na.rm = T),
-# trial_may = mean(trial_may, na.rm = T),
-# trial_jun = mean(trial_jun, na.rm = T),
-# trial_jul = mean(trial_jul, na.rm = T),
-# trial_aug = mean(trial_aug, na.rm = T),
-# trial_sep = mean(trial_sep, na.rm = T),
-# trial_oct = mean(trial_oct, na.rm = T),
-# trial_nov = mean(trial_nov, na.rm = T),
-# trial_dec = mean(trial_dec, na.rm = T))
-# 
-# ###################################################################
-# #Preparing Purchases' months for clustering
-# ###################################################################
-# radar_purchase <- df_numerical_vars %>%group_by(cluster) %>%
-#   summarise(
-# pur_jan = mean(pur_jan, na.rm = T),
-# pur_feb = mean(pur_feb, na.rm = T),
-# pur_mar = mean(pur_mar, na.rm = T),
-# pur_apr = mean(pur_apr, na.rm = T),
-# pur_may = mean(pur_may, na.rm = T),
-# pur_jun = mean(pur_jun, na.rm = T),
-# pur_jul = mean(pur_jul, na.rm = T),
-# pur_aug = mean(pur_aug, na.rm = T),
-# pur_sep = mean(pur_sep, na.rm = T),
-# pur_oct = mean(pur_oct, na.rm = T),
-# pur_nov = mean(pur_nov, na.rm = T),
-# pur_dec = mean(pur_dec, na.rm = T))
-# 
-# ###################################################################
-# #Preparing Attributes variables for clustering
-# ###################################################################
-# radar_atrib <- df_numerical_vars %>%group_by(cluster) %>%
-#   summarise(
-# LTV =mean(LTV, na.rm = T),                
-# gender =mean(gender, na.rm = T),                
-# #age =mean(age, na.rm = T),                 
-# has_active_subscription=mean(has_active_subscription, na.rm = T),
-# non_sub_count=mean(non_sub_count, na.rm = T),
-# sub_count=mean(sub_count, na.rm = T),       
-# custom_prod =mean(custom_prod, na.rm = T),   
-# order_is_subscription_order=mean(order_is_subscription_order, na.rm = T),
-# order_is_trial_kit_order=mean(order_is_trial_kit_order, na.rm = T))
-
-#Preparing tables For Clustering
-radar_pcip <- radar_pcip %>% mutate_if(is.numeric, ~round(., 2))
-radar_act <- radar_act %>% mutate_if(is.numeric, ~round(., 2))
-radar_sat <- radar_sat %>% mutate_if(is.numeric, ~round(., 2))
-radar_gr_race <- radar_gr_race %>% mutate_if(is.numeric, ~round(., 2))
-radar_gr_gender <- radar_gr_gender %>% mutate_if(is.numeric, ~round(., 2))
-# radar_trial_purchase <- radar_trial_purchase %>% mutate_if(is.numeric, ~round(., 2))
-# #radar_year <- radar_year %>% mutate_if(is.numeric, ~round(., 2))
-# radar_prod50 <- radar_prod50 %>% mutate_if(is.numeric, ~round(., 2))
-# radar_prod51 <- radar_prod51 %>% mutate_if(is.numeric, ~round(., 2))
-# radar_prod52 <- radar_prod52 %>% mutate_if(is.numeric, ~round(., 2))
-# radar_prod53_prod01 <- radar_prod53_prod01 %>% mutate_if(is.numeric, ~round(., 2))
-# radar_prod54 <- radar_prod54 %>% mutate_if(is.numeric, ~round(., 2))
-# radar_prod55 <- radar_prod55 %>% mutate_if(is.numeric, ~round(., 2))
-
 ##Adding clusters to rownames()
-rownames(radar_pcip) <- paste("cluster" , letters[1:3] , sep="-")
-rownames(radar_act) <- paste("cluster" , letters[1:3] , sep="-")
-rownames(radar_sat) <- paste("cluster" , letters[1:3] , sep="-")
-rownames(radar_gr_race) <- paste("cluster" , letters[1:3] , sep="-")
-rownames(radar_gr_gender) <- paste("cluster" , letters[1:3] , sep="-")
-# rownames(radar_trial_purchase) <- paste("cluster" , letters[1:3] , sep="-")
-# rownames(radar_prod50) <- paste("cluster" , letters[1:3] , sep="-")
-# rownames(radar_prod51) <- paste("cluster" , letters[1:3] , sep="-")
-# rownames(radar_prod52) <- paste("cluster" , letters[1:3] , sep="-")
-# rownames(radar_prod53_prod01) <- paste("cluster" , letters[1:3] , sep="-")
-# rownames(radar_prod54) <- paste("cluster" , letters[1:3] , sep="-")
-# rownames(radar_prod55) <- paste("cluster" , letters[1:3] , sep="-")
+rownames(radar_pcip) <- paste("cluster" , letters[1:7] , sep="-")
+rownames(radar_act) <- paste("cluster" , letters[1:7] , sep="-")
+rownames(radar_sat) <- paste("cluster" , letters[1:7] , sep="-")
+rownames(radar_gr_race) <- paste("cluster" , letters[1:7] , sep="-")
+rownames(radar_gr_gender) <- paste("cluster" , letters[1:7] , sep="-")
+
 
 ##removing clusters column from tables
 radar_pcip <- radar_pcip %>% select(-cluster)
@@ -354,24 +141,29 @@ radar_act <- radar_act %>% select(-cluster)
 radar_sat <- radar_sat %>% select(-cluster)
 radar_gr_race <- radar_gr_race %>% select(-cluster)
 radar_gr_gender <- radar_gr_gender %>% select(-cluster)
-# radar_trial_purchase <- radar_trial_purchase %>% select(-cluster)
-# #radar_year <- radar_year %>% select(-cluster)
-# radar_prod50 <- radar_prod50 %>% select(-cluster)
-# radar_prod51 <- radar_prod51 %>% select(-cluster)
-# radar_prod52 <- radar_prod52 %>% select(-cluster)
-# radar_prod53_prod01 <- radar_prod53_prod01 %>% select(-cluster)
-# radar_prod54 <- radar_prod54 %>% select(-cluster)
-# radar_prod55 <- radar_prod55 %>% select(-cluster)
+
 ```
 
 #Radar Chart ased On attributes 
 ```{r}
-colors_border=c( rgb(0.2,0.5,0.5,0.9), rgb(0.8,0.2,0.5,0.9) , rgb(0.7,0.5,0.1,0.9) )
-colors_in=c( rgb(0.2,0.5,0.5,0.4), rgb(0.8,0.2,0.5,0.4) , rgb(0.7,0.5,0.1,0.4) )
+colors_border=c( rgb(0.2,0.5,0.5,0.9), 
+                 rgb(0.8,0.2,0.5,0.9),  
+                 rgb(0.7,0.5,0.1,0.9),
+                 rgb(0.128,0,0.128),
+                 rgb(0.128,0,0),
+                 rgb(0,0.100,0),
+                 rgb(0.25,0.25,0.112))
+colors_in=c( rgb(0.2,0.5,0.5,0.4), 
+             rgb(0.8,0.2,0.5,0.4) , 
+             rgb(0.7,0.5,0.1,0.4),
+             rgb(0.216,0.191,0.216),
+             rgb(0.220,0.20,0.60),
+             rgb(0.144,0.238,0.144),
+             rgb(0,0.191,0.255))
 
 par(xpd = TRUE, mar = c(1, 2, 2,1))
 # plot with default options:
-radarchart( radar_atrib, axistype=0, 
+radarchart( radar_pcip, axistype=0, 
             maxmin=F,
             #custom polygon
             pcol=colors_border , pfcol=colors_in , plwd=4 , plty=1,
@@ -385,7 +177,7 @@ radarchart( radar_atrib, axistype=0,
 
 # Add a legend
 legend(x ="topright",
-       legend = rownames(radar_atrib),
+       legend = rownames(radar_pcip),
        bty = "n", pch=20 , 
        col=colors_in , 
        text.col = "grey", 
@@ -395,7 +187,7 @@ legend(x ="topright",
 #Radar Chart based on products
 ```{r}
 par(xpd = TRUE, mar = c(0.5, 2, 2, 0.5))
-radarchart( radar_prod, axistype=0 , 
+radarchart( radar_act, axistype=0 , 
             maxmin=F,
             #custom polygon
             pcol=colors_border , pfcol=colors_in , plwd=4 , plty=1,
@@ -413,7 +205,7 @@ radarchart( radar_prod, axistype=0 ,
 
 # Add a legend
 legend(x ="topright",
-       legend = rownames(radar_atrib),
+       legend = rownames(radar_act),
        bty = "n", pch=20 , 
        col=colors_in , 
        text.col = "grey", 
@@ -422,7 +214,7 @@ legend(x ="topright",
 
 #Radar Chart based on accessories(2-10)
 ```{r}
-radarchart( radar_access, axistype=0 , 
+radarchart( radar_sat, axistype=0 , 
             maxmin=F,
             #custom polygon
             pcol=colors_border , pfcol=colors_in , plwd=4 , plty=1,
@@ -437,7 +229,7 @@ radarchart( radar_access, axistype=0 ,
 
 # Add a legend
 legend(x ="topright",
-       legend = rownames(radar_atrib),
+       legend = rownames(radar_sat),
        bty = "n", pch=20 , 
        col=colors_in , 
        text.col = "grey", 
@@ -447,7 +239,7 @@ legend(x ="topright",
 
 #Radar Chart based on subscription purchases
 ```{r}
-radarchart( radar_Sub_purchase, axistype=1 , 
+radarchart( radar_gr_race, axistype=1 , 
             maxmin=F,
             #custom polygon
             pcol=colors_border , pfcol=colors_in , plwd=4 , plty=1,
@@ -462,200 +254,9 @@ radarchart( radar_Sub_purchase, axistype=1 ,
 
 # Add a legend
 legend(x ="topright",
-       legend = rownames(radar_atrib),
+       legend = rownames(radar_gr_race),
        bty = "n", pch=20 , 
        col=colors_in , 
        text.col = "grey", 
        cex=0.8, pt.cex=2)
 ```
-
-
-#Radar Chart based on trial purchases
-```{r}
-radarchart( radar_trial_purchase, axistype=1 , 
-            maxmin=F,
-            #custom polygon
-            pcol=colors_border , pfcol=colors_in , plwd=4 , plty=1,
-            #custom the grid
-            cglcol="grey", 
-            cglty=1, axislabcol="grey", 
-            caxislabels=seq(0,20,5),
-            cglwd=0.8,
-            #custom labels
-            vlcex=0.8,
-            title = "Clustering on Trial Purchases")
-
-# Add a legend
-legend(x ="topright",
-       legend = rownames(radar_atrib),
-       bty = "n", pch=20 , 
-       col=colors_in , 
-       text.col = "grey", 
-       cex=0.8, pt.cex=2)
-```
-
-
-#Radar chart based on First Time Purchases
-```{r}
-radarchart( radar_purchase, axistype=1 , 
-            maxmin=F,
-            #custom polygon
-            pcol=colors_border , pfcol=colors_in , plwd=4 , plty=1,
-            #custom the grid
-            cglcol="grey", 
-            cglty=1, axislabcol="grey", 
-            caxislabels=seq(0,20,5),
-            cglwd=0.8,
-            #custom labels
-            vlcex=0.8,
-            title = "Clustering on Purchases")
-
-# Add a legend
-legend(x ="topright",
-       legend = rownames(radar_atrib),
-       bty = "n", pch=20 , 
-       col=colors_in , 
-       text.col = "grey", 
-       cex=0.8, pt.cex=2)
-```
-
-#Radar Chart based on products' versions (1,50-55)
-```{r fig.width= 10, fig.height=6}
-#Product 50 versions
-par(mfrow =c(2,3), mar = c(2, 1, 1,2))
-radarchart( radar_prod50, axistype=1 , 
-            maxmin=F,
-            #custom polygon
-            pcol=colors_border , pfcol=colors_in , plwd=4 , plty=1,
-            #custom the grid
-            cglcol="grey", 
-            cglty=1, axislabcol="grey", 
-            caxislabels=seq(0,20,5),
-            cglwd=0.8,
-            #custom labels
-            vlcex=0.8,
-            title = "Product 50")
-# Add a legend
-legend(x ="topright",
-       legend = rownames(radar_prod50),
-       bty = "n", pch=20 , 
-       col=colors_in , 
-       text.col = "grey", 
-       cex=0.8, pt.cex=2)
-
-#Product 51 versions
-radarchart( radar_prod51, axistype=1 , 
-            maxmin=F,
-            #custom polygon
-            pcol=colors_border , pfcol=colors_in , plwd=4 , plty=1,
-            #custom the grid
-            cglcol="grey", 
-            cglty=1, axislabcol="grey", 
-            caxislabels=seq(0,20,5),
-            cglwd=0.8,
-            #custom labels
-            vlcex=0.8,
-            title = "Product 51")
-
-# Add a legend
-legend(x ="topright",
-       legend = rownames(radar_prod51),
-       bty = "n", pch=20 , 
-       col=colors_in , 
-       text.col = "grey", 
-       cex=0.8, pt.cex=2)
-
-
-#Product 52 versions
-radarchart( radar_prod52, axistype=1 , 
-            maxmin=F,
-            #custom polygon
-            pcol=colors_border , pfcol=colors_in , plwd=4 , plty=1,
-            #custom the grid
-            cglcol="grey", 
-            cglty=1, axislabcol="grey", 
-            caxislabels=seq(0,20,5),
-            cglwd=0.8,
-            #custom labels
-            vlcex=0.8,
-            title = "Product 52")
-
-# Add a legend
-legend(x ="topright",
-       legend = rownames(radar_prod52),
-       bty = "n", pch=20 , 
-       col=colors_in , 
-       text.col = "grey", 
-       cex=0.8, pt.cex=2)
-
-
-#Product 53 versions
-radarchart( radar_prod53_prod01, axistype=1 ,
-            maxmin=F,
-            #custom polygon
-            pcol=colors_border , pfcol=colors_in , plwd=4 , plty=1,
-            #custom the grid
-            cglcol="grey",
-            cglty=1, axislabcol="grey",
-            caxislabels=seq(0,20,5),
-            cglwd=0.8,
-            #custom labels
-            vlcex=0.8,
-            title = "Product 53 and Product 1")
-
-# Add a legend
-legend(x ="topright",
-       legend = rownames(radar_prod53_prod01),
-       bty = "n", pch=20 ,
-       col=colors_in ,
-       text.col = "grey",
-       cex=0.8, pt.cex=2)
-
-
-#Product 54 versions
-radarchart( radar_prod54, axistype=1 , 
-            maxmin=F,
-            #custom polygon
-            pcol=colors_border , pfcol=colors_in , plwd=4 , plty=1,
-            #custom the grid
-            cglcol="grey", 
-            cglty=1, axislabcol="grey", 
-            caxislabels=seq(0,20,5),
-            cglwd=0.8,
-            #custom labels
-            vlcex=0.8,
-            title = "Product 54")
-
-# Add a legend
-legend(x ="topright",
-       legend = rownames(radar_prod54),
-       bty = "n", pch=20 , 
-       col=colors_in , 
-       text.col = "grey", 
-       cex=0.8, pt.cex=2)
-
-
-#Product 55 versions
-radarchart( radar_prod55, axistype=1 , 
-            maxmin=F,
-            #custom polygon
-            pcol=colors_border , pfcol=colors_in , plwd=4 , plty=1,
-            #custom the grid
-            cglcol="grey", 
-            cglty=1, axislabcol="grey", 
-            caxislabels=seq(0,20,5),
-            cglwd=0.8,
-            #custom labels
-            vlcex=0.8,
-            title = "Product 55")
-
-# Add a legend
-legend(x ="topright",
-       legend = rownames(radar_prod55),
-       bty = "n", pch=20 , 
-       col=colors_in , 
-       text.col = "grey", 
-       cex=0.8, pt.cex=2)
-
-```
-
