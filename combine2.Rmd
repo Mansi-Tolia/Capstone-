@@ -52,7 +52,7 @@ combined$default <- rowMeans(combined[,c("cdr2","cdr3")], na.rm = T)
 
 
 
-# Kmeans on PCIP
+# Dimensionality Reduction (Kmeans on PCIP)
 ```{r}
 #kmeans cluster analysis on pcip
 combined %>% select(starts_with("pcip"), "unitid", 'year') -> pcip
@@ -162,7 +162,8 @@ medians_by_year <- function(df){
 
 
 ------
-
+MAX/Min/mean
+variable specific NA replacement
 
 # Df Versions
 1. Median imputation by year without cluster
@@ -192,7 +193,8 @@ df_medians_c[is.na(df_medians_c)] <- 0
 3. Replace all NA values in original df with 0 (uni didn't report them or keep track scenario)
 ```{r}
 #school didn't report it/change default NAs to 0
-combined_zeroes <- combined[is.na(combined) ] <- 0
+combined_zeroes <- combined
+combined_zeroes[is.na(combined_zeroes)] <- 0
 ```
 
 4. Non PCIP Clustering
@@ -274,8 +276,9 @@ rf <- function(df){
 rf_results <- tibble(name = "name", mse_train = 'mse_train', mse_test = "mse_test")
 
 #for loop to run through df's
-dfs = list(df_medians, df_medians_c, df_k4cluster) #add more when ready
+dfs = list(df_medians, df_medians_c, combined_zeroes) #add more when ready
 
+#loop
 for (i in 1:length(dfs)){
   result = rf(dfs[i])
   rf_results %>% add_row(name = result[1],
