@@ -77,6 +77,9 @@ combined[, c("dvadm02", "dvadm03", "dvadm05", "dvadm06", "dvef14", "floan_p", "l
 combined[,c("grrt2m", "grrtan", "grrtap", "grrtbk", "grrths", "grrtm", "grrtun", "grrtw", "grrtwh")] <- combined[,c("grrt2m", "grrtan", "grrtap", "grrtbk", "grrths", "grrtm", "grrtun", "grrtw", "grrtwh")]/100
 
 combined <- combined %>% select(-contains("rpy"))
+
+combined[,c("npt412", "npt422", "npt432", "npt442", "npt452")] <- NULL
+
 ```
 
 
