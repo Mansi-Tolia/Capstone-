@@ -35,6 +35,12 @@ names(ipeds) <- tolower(names(ipeds))
 #merge datasets based on unitid and year
 combined <- merge(ipeds, scorecard, by = c("unitid", "year"))
 
+#separate out ACT/SAT for late evalutation
+testScores <- combined %>% select(unitid, year, starts_with("act"), starts_with("sat"))
+
+#combine default rates
+combined$default <- rowMeans(combined[,c("cdr2","cdr3")], na.rm = T)
+
 #remove empty columns, duplicates, unhelpful booleans
 combined$countycd <- NULL
 combined$countynm <- NULL
@@ -50,9 +56,21 @@ combined$pcuenrbk <- NULL
 combined$pcuenrw <- NULL
 combined$pcuenrwh <- NULL
 combined$pcuenrhs <- NULL
+combined$aanapii <- NULL
+combined$annhi <- NULL
+combined$tribal <- NULL
+combined$hsi <- NULL
+combined$nanti <- NULL
+combined$menonly <- NULL
+combined$womenonly <- NULL
+combined$pbi <- NULL
+combined$hbcu <- NULL
+combined[,c("satnum", "satpct", "actnum", "actpct", "satvr25", "satvr75", "satmt25", "satmt75", "actcm25", "actcm75", "acten25", "acten75", "actmt25", "actmt75")] <- NULL
+combined$cdr2 <- NULL
+combined$cdr3 <- NULL
 
-#combine default rates
-combined$default <- rowMeans(combined[,c("cdr2","cdr3")], na.rm = T)
+
+
 ```
 
 
@@ -226,8 +244,11 @@ combined_zeroes[is.na(combined_zeroes)] <- 0
 ```{r}
 #only for the boolean values - replace with the column specific means
 combined_variable <- copy(combined)
-lst <- c("pcuenr2m", "pcuenran", "pcuenras", "pcuenrnh", "pcuenrun")
-
+combined_variable$pcuenr2m[is.na(combined_variable$pcuenr2m)] <- rbinom(n=length(combined_variable$pcuenr2m), size=1, prob=mean(combined_variable$pcuenr2m))
+combined_variable$pcuenran[is.na(combined_variable$pcuenran)] <- rbinom(n=length(combined_variable$pcuenran), size=1, prob=mean(combined_variable$pcuenran))
+combined_variable$pcuenras[is.na(combined_variable$pcuenras)] <- rbinom(n=length(combined_variable$pcuenras), size=1, prob=mean(combined_variable$pcuenras))
+combined_variable$pcuenrnh[is.na(combined_variable$pcuenrnh)] <- rbinom(n=length(combined_variable$pcuenrnh), size=1, prob=mean(combined_variable$pcuenrnh))
+combined_variable$pcuenrun[is.na(combined_variable$pcuenrun)] <- rbinom(n=length(combined_variable$pcuenrun), size=1, prob=mean(combined_variable$pcuenrun))
 
 
 ```
@@ -324,9 +345,10 @@ for (i in 1:length(dfs)){
 
 ------
 
-# Segementation between cohorts and schools
+# ACT/SAT influence
 ```{r}
-# mansi
+
+
 ```
 
 
