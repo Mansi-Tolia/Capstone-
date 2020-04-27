@@ -19,6 +19,7 @@ library(factoextra)
 library(readr)
 library(matrixStats)
 library(randomForest)
+library(rapportools)
 ```
 
 # Data cleaning
@@ -34,7 +35,7 @@ names(ipeds) <- tolower(names(ipeds))
 #merge datasets based on unitid and year
 combined <- merge(ipeds, scorecard, by = c("unitid", "year"))
 
-#remove empty columns or duplicates 
+#remove empty columns, duplicates, unhelpful booleans
 combined$countycd <- NULL
 combined$countynm <- NULL
 combined$locale2 <- NULL
@@ -42,6 +43,13 @@ combined$`institution name` <- NULL
 combined$opeid <- NULL
 combined$opeid6 <- NULL
 combined$city <- NULL
+combined$grrtas <- NULL
+combined$grrtnh <- NULL
+combined$efug <- NULL
+combined$pcuenrbk <- NULL
+combined$pcuenrw <- NULL
+combined$pcuenrwh <- NULL
+combined$pcuenrhs <- NULL
 
 #combine default rates
 combined$default <- rowMeans(combined[,c("cdr2","cdr3")], na.rm = T)
@@ -49,7 +57,6 @@ combined$default <- rowMeans(combined[,c("cdr2","cdr3")], na.rm = T)
 
 
 -----
-
 
 
 # Dimensionality Reduction (Kmeans on PCIP)
@@ -165,20 +172,37 @@ impute_by_year <- function(df, statistic){
 MAX/Min/mean
 variable specific NA replacement
 
+unitid
+year
+logicals - 
+
+
 # Df Versions
 ## 1. Median imputation by year without cluster
 ```{r}
-stats <- c()
+#mean
+df_mean <- impute_by_year(combined, mean)
+df_mean <- df_mean[, colSums(is.na(df_mean)) < 10000] #get rid of anything left that has over 10k NAs
+df_mean[is.na(df_mean)] <- 0 #empty out remaining NAs
 
-
-#no cluster
+#median
 df_medians <- impute_by_year(combined, median)
 df_medians <- df_medians[, colSums(is.na(df_medians)) < 10000] #get rid of anything left that has over 10k NAs
 df_medians[is.na(df_medians)] <- 0 #empty out remaining NAs
 
-# with cluster
+#min
+df_min <- impute_by_year(combined, min)
+df_min <- df_min[, colSums(is.na(df_min)) < 10000] #get rid of anything left that has over 10k NAs
+df_min[is.na(df_min)] <- 0 #empty out remaining NAs
+
+#max
+df_max <- impute_by_year(combined, max)
+df_max <- df_max[, colSums(is.na(df_max)) < 10000] #get rid of anything left that has over 10k NAs
+df_max[is.na(df_max)] <- 0 #empty out remaining NAs
 ```
 
+
+CLEAN UP
 2. Median imputation by year with cluster
 ```{r}
 #no cluster
@@ -198,7 +222,16 @@ combined_zeroes <- combined
 combined_zeroes[is.na(combined_zeroes)] <- 0
 ```
 
-4. Non PCIP Clustering
+4. Variable Specific
+```{r}
+#only for the boolean values - replace with the column specific means
+combined_variable <- copy(combined)
+lst <- c("pcuenr2m", "pcuenran", "pcuenras", "pcuenrnh", "pcuenrun")
+
+
+
+```
+
 
 
 
