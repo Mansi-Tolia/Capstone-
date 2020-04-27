@@ -38,6 +38,9 @@ combined <- merge(ipeds, scorecard, by = c("unitid", "year"))
 #separate out ACT/SAT for late evalutation
 testScores <- combined %>% select(unitid, year, starts_with("act"), starts_with("sat"))
 
+#separate out repayment rate
+repaymentRate <- combined %>% select(unitid, year, contains("rpy"))
+
 #combine default rates
 combined$default <- rowMeans(combined[,c("cdr2","cdr3")], na.rm = T)
 
@@ -68,8 +71,17 @@ combined$hbcu <- NULL
 combined[,c("satnum", "satpct", "actnum", "actpct", "satvr25", "satvr75", "satmt25", "satmt75", "actcm25", "actcm75", "acten25", "acten75", "actmt25", "actmt75")] <- NULL
 combined$cdr2 <- NULL
 combined$cdr3 <- NULL
+combined[, c("dvadm02", "dvadm03", "dvadm05", "dvadm06", "dvef14", "floan_p", "loan_p")] <- combined[, c("dvadm02", "dvadm03", "dvadm05", "dvadm06", "dvef14", "floan_p", "loan_p")]/100
+
+combined[,c("grrt2m", "grrtan", "grrtap", "grrtbk", "grrths", "grrtm", "grrtun", "grrtw", "grrtwh")] <- combined[,c("grrt2m", "grrtan", "grrtap", "grrtbk", "grrths", "grrtm", "grrtun", "grrtw", "grrtwh")]/100
+
+lst <- as.list(names(repaymentRate))
 
 
+
+
+
+ 
 
 ```
 
