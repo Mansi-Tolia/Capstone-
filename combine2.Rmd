@@ -20,6 +20,7 @@ library(readr)
 library(matrixStats)
 library(randomForest)
 library(rapportools)
+library(skimr)
 ```
 
 # Data cleaning
@@ -75,14 +76,7 @@ combined[, c("dvadm02", "dvadm03", "dvadm05", "dvadm06", "dvef14", "floan_p", "l
 
 combined[,c("grrt2m", "grrtan", "grrtap", "grrtbk", "grrths", "grrtm", "grrtun", "grrtw", "grrtwh")] <- combined[,c("grrt2m", "grrtan", "grrtap", "grrtbk", "grrths", "grrtm", "grrtun", "grrtw", "grrtwh")]/100
 
-lst <- as.list(names(repaymentRate))
-
-
-
-
-
- 
-
+combined <- combined %>% select(-contains("rpy"))
 ```
 
 
@@ -253,14 +247,17 @@ combined_zeroes[is.na(combined_zeroes)] <- 0
 ```
 
 4. Variable Specific
-```{r}
+```{r warning=FALSE}
 #only for the boolean values - replace with the column specific means
 combined_variable <- copy(combined)
+
+#replace with probability of mean
 combined_variable$pcuenr2m[is.na(combined_variable$pcuenr2m)] <- rbinom(n=length(combined_variable$pcuenr2m), size=1, prob=mean(combined_variable$pcuenr2m))
 combined_variable$pcuenran[is.na(combined_variable$pcuenran)] <- rbinom(n=length(combined_variable$pcuenran), size=1, prob=mean(combined_variable$pcuenran))
 combined_variable$pcuenras[is.na(combined_variable$pcuenras)] <- rbinom(n=length(combined_variable$pcuenras), size=1, prob=mean(combined_variable$pcuenras))
 combined_variable$pcuenrnh[is.na(combined_variable$pcuenrnh)] <- rbinom(n=length(combined_variable$pcuenrnh), size=1, prob=mean(combined_variable$pcuenrnh))
 combined_variable$pcuenrun[is.na(combined_variable$pcuenrun)] <- rbinom(n=length(combined_variable$pcuenrun), size=1, prob=mean(combined_variable$pcuenrun))
+
 
 
 ```
