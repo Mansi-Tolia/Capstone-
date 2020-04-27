@@ -125,22 +125,22 @@ seventy <- combined[, which((colSums(is.na(combined)) / nrow(combined)) > 0.7) ]
 
 Impute column-wise median values grouped by year
 ```{r}
-medians_by_year <- function(df){
+impute_by_year <- function(df, statistic){
   
   #select only numeric columns
   numeric <- df %>% select_if(is.numeric)
   
   #calculate col-wise medians grouped by the year
-  medians <- numeric %>%
+  tmp <- numeric %>%
     group_by(year) %>%
-    summarise_at(vars(-unitid), funs(median(., na.rm=TRUE)))
+    summarise_at(vars(-unitid), funs(statistic(., na.rm=TRUE)))
   
   #pivot those bad boys
   numeric_long <- pivot_longer(numeric, npt412:tail(names(df),1))
-  medians_long <- pivot_longer(medians, npt412:tail(names(df),1))
+  tmp_long <- pivot_longer(tmp, npt412:tail(names(df),1))
   
   #join by identifying year and name
-  joined <- left_join(numeric_long, medians_long, by = c("year", "name"))
+  joined <- left_join(numeric_long, tmp_long, by = c("year", "name"))
   
   #keep only filled value
   joined$lyufan <- ifelse(is.na(joined$value.x) == T, joined$value.y, joined$value.x)
@@ -150,10 +150,10 @@ medians_by_year <- function(df){
   joined$value.y <- NULL
   
   #new df!
-  df_medians <- pivot_wider(joined, names_from = name, values_from = lyufan)
+  output <- pivot_wider(joined, names_from = name, values_from = lyufan)
   
   #return
-  return(df_medians)
+  return(output)
 }
 
 #check NAs
@@ -166,22 +166,23 @@ MAX/Min/mean
 variable specific NA replacement
 
 # Df Versions
-1. Median imputation by year without cluster
+## 1. Median imputation by year without cluster
 ```{r}
+stats <- c()
+
+
 #no cluster
-df_medians <- medians_by_year(combined)
+df_medians <- impute_by_year(combined, median)
+df_medians <- df_medians[, colSums(is.na(df_medians)) < 10000] #get rid of anything left that has over 10k NAs
+df_medians[is.na(df_medians)] <- 0 #empty out remaining NAs
 
-#get rid of anything left that has over 10k NAs
-df_medians <- df_medians[, colSums(is.na(df_medians)) < 10000]
-
-#empty out remaining NAs
-df_medians[is.na(df_medians)] <- 0
+# with cluster
 ```
 
 2. Median imputation by year with cluster
 ```{r}
 #no cluster
-df_medians_c <- medians_by_year(df_k4cluster)
+df_medians_c <- impute_by_year(df_k4cluster, median)
 
 #get rid of anything left that has over 10k NAs
 df_medians_c <- df_medians_c[, colSums(is.na(df_medians_c)) < 10000]
