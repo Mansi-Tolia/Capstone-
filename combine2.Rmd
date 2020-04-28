@@ -19,7 +19,7 @@ library(factoextra)
 library(readr)
 library(matrixStats)
 library(randomForest)
-library(rapportools)
+library(DescTools)
 library(skimr)
 ```
 
@@ -29,7 +29,7 @@ library(skimr)
 scorecard <- readRDS("~/Desktop/cleaned_scorecard.rds")
 ipeds <- read_csv("~/Desktop/ipeds.csv")
 
-#clean
+#basic clean
 names(scorecard) <- tolower(names(scorecard))
 names(ipeds) <- tolower(names(ipeds))
 
@@ -44,8 +44,6 @@ repaymentRate <- combined %>% select(unitid, year, contains("rpy"))
 
 #combine default rates
 combined$default <- rowMeans(combined[,c("cdr2","cdr3")], na.rm = T)
-
-
 
 #remove empty columns, duplicates, unhelpful booleans
 combined$countycd <- NULL
@@ -74,18 +72,22 @@ combined$hbcu <- NULL
 combined[,c("satnum", "satpct", "actnum", "actpct", "satvr25", "satvr75", "satmt25", "satmt75", "actcm25", "actcm75", "acten25", "acten75", "actmt25", "actmt75")] <- NULL
 combined$cdr2 <- NULL
 combined$cdr3 <- NULL
-combined[, c("dvadm02", "dvadm03", "dvadm05", "dvadm06", "dvef14", "floan_p", "loan_p")] <- combined[, c("dvadm02", "dvadm03", "dvadm05", "dvadm06", "dvef14", "floan_p", "loan_p")]/100
 
+#change to decimal
+combined[, c("dvadm02", "dvadm03", "dvadm05", "dvadm06", "dvef14", "floan_p", "loan_p")] <- combined[, c("dvadm02", "dvadm03", "dvadm05", "dvadm06", "dvef14", "floan_p", "loan_p")]/100
 combined[,c("grrt2m", "grrtan", "grrtap", "grrtbk", "grrths", "grrtm", "grrtun", "grrtw", "grrtwh")] <- combined[,c("grrt2m", "grrtan", "grrtap", "grrtbk", "grrths", "grrtm", "grrtun", "grrtw", "grrtwh")]/100
 
+#select out repayment
 combined <- combined %>% select(-contains("rpy"))
 
+#not using these anymore
 combined[,c("npt412", "npt422", "npt432", "npt442", "npt452")] <- NULL
 
+#select columns with <= 50% NA
 combined <- combined[, which((colSums(is.na(combined)) / nrow(combined)) <= 0.5)]
 ```
 
-save to csv
+To CSV
 ```{r}
 write_csv(testScores, '~/Desktop/testScores.csv')
 write_csv(repaymentRate, '~/Desktop/repayment.csv')
@@ -180,8 +182,8 @@ impute_by_year <- function(df, statistic){
     summarise_at(vars(-unitid), funs(statistic(., na.rm=TRUE)))
   
   #pivot those bad boys
-  numeric_long <- pivot_longer(numeric, npt412:tail(names(df),1))
-  tmp_long <- pivot_longer(tmp, npt412:tail(names(df),1))
+  numeric_long <- pivot_longer(numeric, 3:tail(names(df),1))
+  tmp_long <- pivot_longer(tmp, 2:tail(names(df),1))
   
   #join by identifying year and name
   joined <- left_join(numeric_long, tmp_long, by = c("year", "name"))
@@ -199,9 +201,6 @@ impute_by_year <- function(df, statistic){
   #return
   return(output)
 }
-
-#check NAs
-#colSums(is.na(df_medians))
 ```
 
 
@@ -261,17 +260,35 @@ combined_zeroes[is.na(combined_zeroes)] <- 0
 
 4. Variable Specific
 ```{r warning=FALSE}
-#only for the boolean values - replace with the column specific means
 combined_variable <- copy(combined)
 
-#replace with probability of mean
-combined_variable$pcuenr2m[is.na(combined_variable$pcuenr2m)] <- rbinom(n=length(combined_variable$pcuenr2m), size=1, prob=mean(combined_variable$pcuenr2m))
+#replace booleans with probability of mean
 combined_variable$pcuenran[is.na(combined_variable$pcuenran)] <- rbinom(n=length(combined_variable$pcuenran), size=1, prob=mean(combined_variable$pcuenran))
-combined_variable$pcuenras[is.na(combined_variable$pcuenras)] <- rbinom(n=length(combined_variable$pcuenras), size=1, prob=mean(combined_variable$pcuenras))
 combined_variable$pcuenrnh[is.na(combined_variable$pcuenrnh)] <- rbinom(n=length(combined_variable$pcuenrnh), size=1, prob=mean(combined_variable$pcuenrnh))
-combined_variable$pcuenrun[is.na(combined_variable$pcuenrun)] <- rbinom(n=length(combined_variable$pcuenrun), size=1, prob=mean(combined_variable$pcuenrun))
 
+#appl_sch_n to zeroes
+combined_variable$appl_sch_n[is.na(combined_variable$appl_sch_n)] <-0
+combined_variable$default[is.na(combined_variable$default)] <- 0
 
+combined_variable[ ,grep("pcip", names(combined_variable))][is.na(combined_variable[ ,grep("pcip", names(combined_variable))])] <- 0
+
+#no age comparison needed
+combined_variable$dvef14 <- NULL
+combined_variable$loan_ever <- NULL
+combined_variable$par_ed_n <- NULL
+
+#median imputation
+combined_variable %>%
+  select(unitid, year, avgfacsal, cinsoff, cotsoff, debt_mdn, floan_a, 
+         floan_p, grad_debt_mdn, grrtap, grrtbk, grrths,grrtm, grrtwh, grrtw, 
+         loan_a, loan_p, stufacr) %>%
+  impute_by_year(median) -> impute_medians
+
+combined_variable %>% 
+  select(-c(names(impute_medians)), unitid, year) %>%
+  left_join(impute_medians, by = c("unitid", "year")) -> combined_variable
+
+write_csv(combined_variable, '~/Desktop/combined_variable.csv')
 
 ```
 
