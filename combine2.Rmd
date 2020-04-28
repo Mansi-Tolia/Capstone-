@@ -45,6 +45,8 @@ repaymentRate <- combined %>% select(unitid, year, contains("rpy"))
 #combine default rates
 combined$default <- rowMeans(combined[,c("cdr2","cdr3")], na.rm = T)
 
+
+
 #remove empty columns, duplicates, unhelpful booleans
 combined$countycd <- NULL
 combined$countynm <- NULL
@@ -80,6 +82,14 @@ combined <- combined %>% select(-contains("rpy"))
 
 combined[,c("npt412", "npt422", "npt432", "npt442", "npt452")] <- NULL
 
+combined <- combined[, which((colSums(is.na(combined)) / nrow(combined)) <= 0.5)]
+```
+
+save to csv
+```{r}
+write_csv(testScores, '~/Desktop/testScores.csv')
+write_csv(repaymentRate, '~/Desktop/repayment.csv')
+write_csv(combined, '~/Desktop/combined.csv')
 ```
 
 
