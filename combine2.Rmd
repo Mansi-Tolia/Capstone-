@@ -269,8 +269,8 @@ combined_zeroes[is.na(combined_zeroes)] <- 0
 combined_variable <- copy(combined)
 
 #replace booleans with probability of mean
-combined_variable$pcuenran[is.na(combined_variable$pcuenran)] <- rbinom(n=length(combined_variable$pcuenran), size=1, prob=mean(combined_variable$pcuenran))
-combined_variable$pcuenrnh[is.na(combined_variable$pcuenrnh)] <- rbinom(n=length(combined_variable$pcuenrnh), size=1, prob=mean(combined_variable$pcuenrnh))
+combined_variable$pcuenran[is.na(combined_variable$pcuenran)] <- rbinom(n=length(combined_variable$pcuenran), size=1, prob=mean(combined_variable$pcuenran, na.rm = T))
+combined_variable$pcuenrnh[is.na(combined_variable$pcuenrnh)] <- rbinom(n=length(combined_variable$pcuenrnh), size=1, prob=mean(combined_variable$pcuenrnh, na.rm = T))
 
 #default NA to zeroes
 combined_variable$default[is.na(combined_variable$default)] <- 0
@@ -312,6 +312,38 @@ write_csv(combined_variable_mean, '~/Desktop/combined_variable_mean.csv')
 ```
 
 
+# Write all data to csv for GCP
+```{r}
+dfs = list(combined_variable_mean, 
+           combined_variable_median,
+           df_median, 
+           df_mean,
+           df_min,
+           df_max,
+           df_median_c, 
+           df_mean_c,
+           df_min_c,
+           df_max_c,
+           combined_zeroes)
+dfs_names = c("combined_variable_mean", 
+           "combined_variable_median",
+           "df_median", 
+           "df_mean",
+           "df_min",
+           "df_max",
+           "df_median_c", 
+           "df_mean_c",
+           "df_min_c",
+           "df_max_c",
+           "combined_zeroes")
+
+for (i in 1:length(dfs)){
+  df <- dfs[[i]]
+  write_csv(df, paste0('~/Desktop/DFs/', dfs_names[i], '.csv'))
+}
+
+```
+
 
 ------
 
@@ -319,11 +351,10 @@ write_csv(combined_variable_mean, '~/Desktop/combined_variable_mean.csv')
 # Function
 Create a function that takes in a dataframe (some version of combined after imputing), runs a model (RF), and records out-of-sample MSE on a log. 
 ```{r}
-rf <- function(df){
+rf <- function(df, trees = 1){
   
   set.seed(1234)
   
-  df <- combined_variable_mean
   #split into train and test
   split_index <- sample(nrow(df), nrow(df)*0.8)
   df_train <- df[split_index, ]
@@ -356,7 +387,7 @@ rf <- function(df){
   #RF fit
   fit_rf <- randomForest(formula,
                          df_train,
-                         ntree=5,
+                         ntree=trees,
                          do.trace=T)
   print("tree works")
     
@@ -384,7 +415,9 @@ rf <- function(df){
 # Test out rf function
 ```{r}
 #initialize log
-rf_results <- tibble(name = "name", mse_train = 'mse_train', mse_test = "mse_test")
+rf_results <- data.frame(name=numeric(),
+                         mse_train=numeric(),
+                         mse_test = numeric())
 
 #for loop to run through df's
 dfs = list(combined_variable_mean, 
@@ -397,17 +430,29 @@ dfs = list(combined_variable_mean,
            df_mean_c,
            df_min_c,
            df_max_c,
-           combined_zeroes) #add more when ready
+           combined_zeroes)
+
+dfs_names = c("combined_variable_mean", 
+           "combined_variable_median",
+           "df_median", 
+           "df_mean",
+           "df_min",
+           "df_max",
+           "df_median_c", 
+           "df_mean_c",
+           "df_min_c",
+           "df_max_c",
+           "combined_zeroes")
 
 #loop
 for (i in 1:length(dfs)){
-  result = rf(dfs[i])
-  rf_results %>% add_row(name = result[1],
-                         mse_train = result[2],
-                         mse_test = result[3])
+  df <- dfs[[i]]
+  result = rf(df, trees = 10)
+  rf_results <- rf_results %>% add_row(name = dfs_names[i],
+                                       mse_train = result[[2]],
+                                       mse_test = result[[3]])
 }
 ```
-
 
 ------
 
