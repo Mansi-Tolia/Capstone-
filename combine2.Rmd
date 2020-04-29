@@ -72,6 +72,9 @@ combined$hbcu <- NULL
 combined[,c("satnum", "satpct", "actnum", "actpct", "satvr25", "satvr75", "satmt25", "satmt75", "actcm25", "actcm75", "acten25", "acten75", "actmt25", "actmt75")] <- NULL
 combined$cdr2 <- NULL
 combined$cdr3 <- NULL
+combined$loan_ever <- NULL
+combined$par_ed_n <- NULL
+combined$appl_sch_n <- NULL
 
 #change to decimal
 combined[, c("dvadm02", "dvadm03", "dvadm05", "dvadm06", "dvef14", "floan_p", "loan_p")] <- combined[, c("dvadm02", "dvadm03", "dvadm05", "dvadm06", "dvef14", "floan_p", "loan_p")]/100
@@ -155,18 +158,6 @@ fviz_contrib(pcip_pca, choice = "var", axes = 3)
 ------
 
 
-# Experimenting with data loss based on `NA` removal
-```{r}
-# remove columns with less than X% NA
-twenty <- combined[, which((colSums(is.na(combined)) / nrow(combined)) > 0.2) ]
-fifty <- combined[, which((colSums(is.na(combined)) / nrow(combined)) > 0.5) ]
-seventy <- combined[, which((colSums(is.na(combined)) / nrow(combined)) > 0.7) ]
-```
-
-
-------
-
-
 # Imputation - create various copies of `combined` using different imputation methods
 
 Impute column-wise median values grouped by year
@@ -205,98 +196,124 @@ impute_by_year <- function(df, statistic){
 
 
 ------
-MAX/Min/mean
-variable specific NA replacement
-
-unitid
-year
-logicals - 
 
 
 # Df Versions
 ## 1. Median imputation by year without cluster
 ```{r}
 #mean
-df_mean <- impute_by_year(combined, mean)
-df_mean <- df_mean[, colSums(is.na(df_mean)) < 10000] #get rid of anything left that has over 10k NAs
+df_mean <- copy(combined)
+df_mean <- impute_by_year(df_mean, mean)
+df_mean <- df_mean[, colSums(is.na(df_mean)) <= 10000] #get rid of anything left that has over 10k NAs
 df_mean[is.na(df_mean)] <- 0 #empty out remaining NAs
 
 #median
-df_medians <- impute_by_year(combined, median)
-df_medians <- df_medians[, colSums(is.na(df_medians)) < 10000] #get rid of anything left that has over 10k NAs
-df_medians[is.na(df_medians)] <- 0 #empty out remaining NAs
+df_median <- copy(combined)
+df_median <- impute_by_year(df_median, median)
+df_median <- df_median[, colSums(is.na(df_median)) <= 10000] #get rid of anything left that has over 10k NAs
+df_median[is.na(df_median)] <- 0 #empty out remaining NAs
 
 #min
-df_min <- impute_by_year(combined, min)
-df_min <- df_min[, colSums(is.na(df_min)) < 10000] #get rid of anything left that has over 10k NAs
+df_min <- copy(combined)
+df_min <- impute_by_year(df_min, min)
+df_min <- df_min[, colSums(is.na(df_min)) <= 10000] #get rid of anything left that has over 10k NAs
 df_min[is.na(df_min)] <- 0 #empty out remaining NAs
 
 #max
-df_max <- impute_by_year(combined, max)
-df_max <- df_max[, colSums(is.na(df_max)) < 10000] #get rid of anything left that has over 10k NAs
+df_max <- copy(combined)
+df_max <- impute_by_year(df_max, max)
+df_max <- df_max[, colSums(is.na(df_max)) <= 10000] #get rid of anything left that has over 10k NAs
 df_max[is.na(df_max)] <- 0 #empty out remaining NAs
 ```
 
 
-CLEAN UP
-2. Median imputation by year with cluster
+## 2. Median imputation by year with cluster
 ```{r}
-#no cluster
-df_medians_c <- impute_by_year(df_k4cluster, median)
+#mean
+df_mean_c <- copy(df_k4cluster)
+df_mean_c <- impute_by_year(df_mean_c, mean)
+df_mean_c <- df_mean_c[, colSums(is.na(df_mean_c)) <= 10000] #get rid of anything left that has over 10k NAs
+df_mean_c[is.na(df_mean_c)] <- 0 #empty out remaining NAs
 
-#get rid of anything left that has over 10k NAs
-df_medians_c <- df_medians_c[, colSums(is.na(df_medians_c)) < 10000]
+#median
+df_median_c <- copy(df_k4cluster)
+df_median_c <- impute_by_year(df_median_c, median)
+df_median_c <- df_median_c[, colSums(is.na(df_median_c)) <= 10000] #get rid of anything left that has over 10k NAs
+df_median_c[is.na(df_median_c)] <- 0 #empty out remaining NAs
 
-#empty out remaining NAs
-df_medians_c[is.na(df_medians_c)] <- 0
+#min
+df_min_c <- copy(df_k4cluster)
+df_min_c <- impute_by_year(df_min_c, min)
+df_min_c <- df_min_c[, colSums(is.na(df_min_c)) <= 10000] #get rid of anything left that has over 10k NAs
+df_min_c[is.na(df_min_c)] <- 0 #empty out remaining NAs
+
+#max
+df_max_c <- copy(df_k4cluster)
+df_max_c <- impute_by_year(df_max_c, max)
+df_max_c <- df_max_c[, colSums(is.na(df_max_c)) <= 10000] #get rid of anything left that has over 10k NAs
+df_max_c[is.na(df_max_c)] <- 0 #empty out remaining NAs
 ```
+
 
 3. Replace all NA values in original df with 0 (uni didn't report them or keep track scenario)
 ```{r}
 #school didn't report it/change default NAs to 0
-combined_zeroes <- combined
+combined_zeroes <- copy(combined)
 combined_zeroes[is.na(combined_zeroes)] <- 0
 ```
 
+
 4. Variable Specific
 ```{r warning=FALSE}
+#create a copy
 combined_variable <- copy(combined)
 
 #replace booleans with probability of mean
 combined_variable$pcuenran[is.na(combined_variable$pcuenran)] <- rbinom(n=length(combined_variable$pcuenran), size=1, prob=mean(combined_variable$pcuenran))
 combined_variable$pcuenrnh[is.na(combined_variable$pcuenrnh)] <- rbinom(n=length(combined_variable$pcuenrnh), size=1, prob=mean(combined_variable$pcuenrnh))
 
-#appl_sch_n to zeroes
-combined_variable$appl_sch_n[is.na(combined_variable$appl_sch_n)] <-0
+#default NA to zeroes
 combined_variable$default[is.na(combined_variable$default)] <- 0
 
+#replace all NA in PCIP to 0
 combined_variable[ ,grep("pcip", names(combined_variable))][is.na(combined_variable[ ,grep("pcip", names(combined_variable))])] <- 0
 
 #no age comparison needed
 combined_variable$dvef14 <- NULL
-combined_variable$loan_ever <- NULL
-combined_variable$par_ed_n <- NULL
 
 #median imputation
 combined_variable %>%
   select(unitid, year, avgfacsal, cinsoff, cotsoff, debt_mdn, floan_a, 
          floan_p, grad_debt_mdn, grrtap, grrtbk, grrths,grrtm, grrtwh, grrtw, 
          loan_a, loan_p, stufacr) %>%
-  impute_by_year(median) -> impute_medians
+  impute_by_year(median) -> tmp_medians
 
+#join back to combined_variable
 combined_variable %>% 
-  select(-c(names(impute_medians)), unitid, year) %>%
-  left_join(impute_medians, by = c("unitid", "year")) -> combined_variable
+  select(-c(names(tmp_medians)), unitid, year) %>%
+  left_join(tmp_medians, by = c("unitid", "year")) -> combined_variable_median
 
-write_csv(combined_variable, '~/Desktop/combined_variable.csv')
 
+#mean imputation
+combined_variable %>%
+  select(unitid, year, avgfacsal, cinsoff, cotsoff, debt_mdn, floan_a, 
+         floan_p, grad_debt_mdn, grrtap, grrtbk, grrths,grrtm, grrtwh, grrtw, 
+         loan_a, loan_p, stufacr) %>%
+  impute_by_year(mean) -> tmp_mean
+
+#join back to combined_variable
+combined_variable %>% 
+  select(-c(names(tmp_mean)), unitid, year) %>%
+  left_join(tmp_mean, by = c("unitid", "year")) -> combined_variable_mean
+
+#write out
+write_csv(combined_variable_median, '~/Desktop/combined_variable_median.csv')
+write_csv(combined_variable_mean, '~/Desktop/combined_variable_mean.csv')
 ```
 
 
 
-
 ------
-
 
 
 # Function
@@ -305,7 +322,8 @@ Create a function that takes in a dataframe (some version of combined after impu
 rf <- function(df){
   
   set.seed(1234)
-    
+  
+  df <- combined_variable_mean
   #split into train and test
   split_index <- sample(nrow(df), nrow(df)*0.8)
   df_train <- df[split_index, ]
@@ -340,7 +358,6 @@ rf <- function(df){
                          df_train,
                          ntree=5,
                          do.trace=T)
-  
   print("tree works")
     
   #Plot RF fit
@@ -370,7 +387,17 @@ rf <- function(df){
 rf_results <- tibble(name = "name", mse_train = 'mse_train', mse_test = "mse_test")
 
 #for loop to run through df's
-dfs = list(df_medians, df_medians_c, combined_zeroes) #add more when ready
+dfs = list(combined_variable_mean, 
+           combined_variable_median,
+           df_median, 
+           df_mean,
+           df_min,
+           df_max,
+           df_median_c, 
+           df_mean_c,
+           df_min_c,
+           df_max_c,
+           combined_zeroes) #add more when ready
 
 #loop
 for (i in 1:length(dfs)){
