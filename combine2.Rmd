@@ -462,11 +462,29 @@ for (i in 1:length(dfs)){
 
 
 # Linear regression on best df version
-```{r}
-fit1 <- lm(default~., df_mean)
-summary(fit1)
+```{r warning=FALSE}
+library(car)
+library(ridge)
 
+#split 80/20
+index <- sample(1:nrow(xvars), 0.8*nrow(xvars))
+train <- df_mean[index, ]
+test <- df_mean[-index, ]
 
+#linear regression
+fitLin <- lm(default~., train)
+summary(fitLin)
+predsLin <- predict(fitLin, test)
+mean((train$default-predsLin)^2)
+mean((test$default-predsLin)^2)
+
+#ridge
+fitRidge <- linearRidge(default~., train)
+predsRidge <- predict(fitRidge, test)
+mean((train$default-predsRidge)^2)
+mean((test$default-predsRidge)^2)
+
+#risk score
 
 
 
