@@ -472,15 +472,17 @@ test <- df_mean[-index, ]
 
 #linear regression
 fitLin <- lm(default~., train)
-predsLin <- predict(fitLin, test)
-mean((train$default-predsLin)^2)
-mean((test$default-predsLin)^2)
+predsLinTrain <- predict(fitLin, train)
+predsLinTest <- predict(fitLin, test)
+mean((train$default-predsLinTrain)^2)
+mean((test$default-predsLinTest)^2)
 
 #ridge
 fitRidge <- linearRidge(default~., train)
-predsRidge <- predict(fitRidge, test)
-mean((train$default-predsRidge)^2)
-mean((test$default-predsRidge)^2)
+predsRidgeTrain <- predict(fitRidge, train)
+predsRidgeTest <- predict(fitRidge, test)
+mean((train$default-predsRidgeTrain)^2)
+mean((test$default-predsRidgeTest)^2)
 
 ## forward selection
 xnames <- colnames(train)
@@ -505,7 +507,6 @@ log_fw <-tibble(
   mse_train = mse_train,
   mse_test = mse_test
 )
-
 
 # an outer while loop considers all potential predictors until all of them
 # have been added to the model
@@ -567,6 +568,30 @@ ggplot(log_fw,aes(seq_along(xname), mse_test))+
   scale_y_continuous("MSE test")+
   theme(axis.text.x =element_text(angle = 45, hjust = 1))
 ```
+
+
+# Keep only top 20
+```{r}
+#select top 20 (ignore intercept)
+keep <- log_fw$xname[2:22]
+
+#create formula
+loopformula <- "default ~ 1"
+for(var in keep){
+    loopformula <- paste(loopformula, "+", var, sep = '')
+  }
+formula <- as.formula(loopformula)
+
+#linear model
+fit <- lm(formula = formula, train)
+predsTrain <- predict(fit, train)
+predsTest <- predict(fit, test)
+mean((train$default-predsTrain)^2)
+mean((test$default-predsTest)^2)
+```
+
+
+
 
 
 ------
