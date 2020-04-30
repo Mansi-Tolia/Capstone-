@@ -418,6 +418,7 @@ rf <- function(df, trees = 1){
 }
 ```
 
+
 # Test out rf function
 ```{r}
 #initialize log
@@ -460,10 +461,21 @@ for (i in 1:length(dfs)){
 }
 ```
 
+
 ------
 
+#Add Mansi clustering, get rid of `default` outliers
+```{r message=FALSE, warning=FALSE}
+df_mean <- read_csv('~/Desktop/DFs/df_mean.csv')
+cluster <- read_csv('~/Desktop/df_clusters.csv') %>% select(cluster)
+df_mean <- add_column(df_mean, cluster = cluster$cluster, .after = names[length(names)-1])
 
-# Linear regression on best df version
+iqrDefault <- IQR(df_mean$default)
+df_mean <- df_mean[df_mean$default <= (mean(df_mean$default)+iqrDefault), ]
+```
+
+
+# Linear regression on best df_mean
 ```{r warning=FALSE}
 #split 80/20
 index <- sample(1:nrow(xvars), 0.8*nrow(xvars))
@@ -474,16 +486,36 @@ test <- df_mean[-index, ]
 fitLin <- lm(default~., train)
 predsLinTrain <- predict(fitLin, train)
 predsLinTest <- predict(fitLin, test)
-mean((train$default-predsLinTrain)^2)
-mean((test$default-predsLinTest)^2)
+mean((train$default-predsLinTrain)^2, na.rm = T)
+mean((test$default-predsLinTest)^2, na.rm = T)
+```
 
+# Ridge
+```{r}
 #ridge
 fitRidge <- linearRidge(default~., train)
 predsRidgeTrain <- predict(fitRidge, train)
 predsRidgeTest <- predict(fitRidge, test)
-mean((train$default-predsRidgeTrain)^2)
-mean((test$default-predsRidgeTest)^2)
+mean((train$default-predsRidgeTrain)^2, na.rm = T)
+mean((test$default-predsRidgeTest)^2, na.rm = T)
+```
 
+# Split by time 2008-2015/2016-2017
+```{r}
+years_index <- 2008:2015
+train <- subset(df_mean, year>=2008 & year <= 2015)
+test <- subset(df_mean, year>2015)
+
+fitTime <- lm(default~., train)
+predsTimeTrain <- predict(fitTime, train)
+predsTimeTest <- predict(fitTime, test)
+mean((train$default-predsTimeTrain)^2, na.rm = T)
+mean((test$default-predsTimeTest)^2, na.rm = T)
+```
+
+
+# Forward Selection
+```{r}
 ## forward selection
 xnames <- colnames(train)
 xnames <- xnames[!xnames %in% c("unitid", "default")]
@@ -496,8 +528,8 @@ yhat_train <- predict(fit_fw, train)
 yhat_test <- predict(fit_fw, test)
 
 #calculate MSEs
-mse_train <- mean((train$default - yhat_train) ^ 2)
-mse_test <- mean((test$default - yhat_test) ^ 2)
+mse_train <- mean((train$default - yhat_train)^2, na.rm = T)
+mse_test <- mean((test$default - yhat_test)^2, na.rm = T)
 
 #log the intercept only model to match against
 xname <- "intercept"
@@ -528,11 +560,11 @@ while (length(xnames) > 0) {
     
     # compute MSE train
     yhat_train_tmp <- predict(fit_fw_tmp, train)
-    mse_train_tmp <- mean((train$default - yhat_train_tmp) ^ 2)
+    mse_train_tmp <- mean((train$default - yhat_train_tmp)^2, na.rm = T)
     
     # compute MSE test
     yhat_test_tmp <- predict(fit_fw_tmp, test)
-    mse_test_tmp <- mean((test$default - yhat_test_tmp) ^ 2)
+    mse_test_tmp <- mean((test$default - yhat_test_tmp)^2, na.rm = T)
     
     # if this is the first predictor to be examined,
     # or if this predictors yields a lower MSE that the current
@@ -570,10 +602,10 @@ ggplot(log_fw,aes(seq_along(xname), mse_test))+
 ```
 
 
-# Keep only top 20
+# Only top 20
 ```{r}
 #select top 20 (ignore intercept)
-keep <- log_fw$xname[2:22]
+keep <- log_fw$xname[2:21]
 
 #create formula
 loopformula <- "default ~ 1"
@@ -586,26 +618,66 @@ formula <- as.formula(loopformula)
 fit <- lm(formula = formula, train)
 predsTrain <- predict(fit, train)
 predsTest <- predict(fit, test)
-mean((train$default-predsTrain)^2)
-mean((test$default-predsTest)^2)
+mean((train$default-predsTrain)^2, na.rm = T)
+mean((test$default-predsTest)^2, na.rm = T)
 ```
 
 
-
-
-
-------
-
-
-
-# ACT/SAT influence
+# Risk Scores based on model
 ```{r}
+#save parameters
+params <- as.data.frame(coef(fitTime))
+params <- add_column(params, parameter = rownames(params), .before = coef(fitTime))
+rownames(params) <- NULL
+params <- params[params$parameter %in% keep, ]
+names(params) <- c("params", "coef")
 
+#group by school
+grouped <- df_mean %>% 
+  select(unitid, keep) %>%
+  group_by(unitid) %>%
+  summarise_each(mean)
 
+#calculate risk score for each school
+risk_log <- data.frame(unitid=numeric(),
+                       risk = numeric())
+
+for (i in 1:nrow(grouped)){
+  #initialize
+  risk <- 0
+  
+  #subset without unitid
+  name = grouped[i,1]
+  vec <- grouped[i,-1]
+  vec <- pivot_longer(vec, 1:ncol(vec))
+  tmp <- as.data.frame(cbind(data = params$coef, param = vec$value))
+  
+  #calculate values
+  tmp$product <- tmp$data * tmp$param
+  risk <- risk + sum(tmp$product)
+  
+  #add to log
+  risk_log <- risk_log %>% add_row(unitid = name, risk = risk)
+}
+
+#add back to risk
+grouped$risk <- risk_log$risk
+grouped$logRisk <- log(risk_log$risk)
 ```
 
-------
+```{r}
+cor(grouped)
+ggplot(grouped, aes(x = risk, y = cinsoff, col = cluster))+
+  geom_point()
+ggplot(grouped, aes(x = logRisk, y = cinsoff, col = cluster))+
+  geom_point()
+```
 
+
+
+
+
+------
 
 
 
