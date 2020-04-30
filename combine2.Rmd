@@ -21,6 +21,8 @@ library(matrixStats)
 library(randomForest)
 library(DescTools)
 library(skimr)
+library(car)
+library(ridge)
 ```
 
 # Raw data/Cleaning
@@ -463,9 +465,6 @@ for (i in 1:length(dfs)){
 
 # Linear regression on best df version
 ```{r warning=FALSE}
-library(car)
-library(ridge)
-
 #split 80/20
 index <- sample(1:nrow(xvars), 0.8*nrow(xvars))
 train <- df_mean[index, ]
@@ -473,7 +472,6 @@ test <- df_mean[-index, ]
 
 #linear regression
 fitLin <- lm(default~., train)
-summary(fitLin)
 predsLin <- predict(fitLin, test)
 mean((train$default-predsLin)^2)
 mean((test$default-predsLin)^2)
@@ -484,17 +482,91 @@ predsRidge <- predict(fitRidge, test)
 mean((train$default-predsRidge)^2)
 mean((test$default-predsRidge)^2)
 
-#risk score
+## forward selection
+xnames <- colnames(train)
+xnames <- xnames[!xnames %in% c("unitid", "default")]
+
+#start with the intercept model
+fit_fw <- lm(default ~ 1, data = train)
+
+#predict the yhats based off fit_fw
+yhat_train <- predict(fit_fw, train)
+yhat_test <- predict(fit_fw, test)
+
+#calculate MSEs
+mse_train <- mean((train$default - yhat_train) ^ 2)
+mse_test <- mean((test$default - yhat_test) ^ 2)
+
+#log the intercept only model to match against
+xname <- "intercept"
+log_fw <-tibble(
+  xname = xname,
+  model = paste0(deparse(fit_fw$call), collapse = ""),
+  mse_train = mse_train,
+  mse_test = mse_test
+)
 
 
+# an outer while loop considers all potential predictors until all of them
+# have been added to the model
+while (length(xnames) > 0) {
+  
+  # keep track of which is the next best variable to add
+  best_mse_train <- NA
+  best_mse_test <- NA
+  best_fit_fw <- NA
+  best_xname <- NA
+  
+  # select the next best predictor
+  for (xname in xnames) {
+    
+    # fit a model that adds the predictor xname to the current best model
+    # to do this you will want to use the update() command which can add a predictor
+    # to an existing model
+    fit_fw_tmp <- update(fit_fw, as.formula(paste0(" ~ ", xname)))
+    
+    # compute MSE train
+    yhat_train_tmp <- predict(fit_fw_tmp, train)
+    mse_train_tmp <- mean((train$default - yhat_train_tmp) ^ 2)
+    
+    # compute MSE test
+    yhat_test_tmp <- predict(fit_fw_tmp, test)
+    mse_test_tmp <- mean((test$default - yhat_test_tmp) ^ 2)
+    
+    # if this is the first predictor to be examined,
+    # or if this predictors yields a lower MSE that the current
+    # best, then store this predictor as the current best predictor
+    if (is.na(best_mse_test) | mse_test_tmp < best_mse_test) {
+      best_xname <- xname
+      best_fit_fw <- fit_fw_tmp
+      best_mse_train <- mse_train_tmp
+      best_mse_test <- mse_test_tmp
+    }
+  }
+  # update the log
+  log_fw <-
+    log_fw %>% add_row(
+      xname = best_xname,
+      model = paste0(deparse(best_fit_fw$call), collapse = ""),
+      mse_train = best_mse_train,
+      mse_test = best_mse_test
+    )
+  # adopt the best model for the next iteration
+  fit_fw <- best_fit_fw
+  
+  # remove the current best predictor from the list of predictors
+  xnames <- xnames[xnames != best_xname]
+}
 
-
+ggplot(log_fw,aes(seq_along(xname), mse_test))+
+  geom_point()+
+  geom_line()+
+  geom_point(aes(y = mse_train), color = "blue")+
+  geom_line(aes(y = mse_train), color = "blue")+
+  scale_x_continuous("Variables", labels = log_fw$xname, breaks = seq_along(log_fw$xname))+
+  scale_y_continuous("MSE test")+
+  theme(axis.text.x =element_text(angle = 45, hjust = 1))
 ```
-
-
-
-
-
 
 
 ------
