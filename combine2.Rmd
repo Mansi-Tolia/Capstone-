@@ -23,6 +23,7 @@ library(DescTools)
 library(skimr)
 library(car)
 library(ridge)
+library(tibble)
 ```
 
 # Raw data/Cleaning
@@ -467,8 +468,8 @@ for (i in 1:length(dfs)){
 #Add Mansi clustering, get rid of `default` outliers
 ```{r message=FALSE, warning=FALSE}
 df_mean <- read_csv('~/Desktop/DFs/df_mean.csv')
-cluster <- read_csv('~/Desktop/df_clusters.csv') %>% select(cluster)
-df_mean <- add_column(df_mean, cluster = cluster$cluster, .after = names[length(names)-1])
+cluster <- read_csv('~/Desktop/DFs/df_clusters.csv') %>% select(cluster)
+#df_mean <- add_column(df_mean, cluster = cluster$cluster, .after = names[length(names)-1])
 
 iqrDefault <- IQR(df_mean$default)
 df_mean <- df_mean[df_mean$default <= (mean(df_mean$default)+iqrDefault), ]
@@ -478,7 +479,7 @@ df_mean <- df_mean[df_mean$default <= (mean(df_mean$default)+iqrDefault), ]
 # Linear regression on best df_mean
 ```{r warning=FALSE}
 #split 80/20
-index <- sample(1:nrow(xvars), 0.8*nrow(xvars))
+index <- sample(1:nrow(df_mean), 0.8*nrow(df_mean))
 train <- df_mean[index, ]
 test <- df_mean[-index, ]
 
@@ -623,7 +624,7 @@ mean((test$default-predsTest)^2, na.rm = T)
 ```
 
 
-# Risk Scores based on model
+# safety Scores based on model
 ```{r}
 #save parameters
 params <- as.data.frame(coef(fitTime))
@@ -638,13 +639,13 @@ grouped <- df_mean %>%
   group_by(unitid) %>%
   summarise_each(mean)
 
-#calculate risk score for each school
-risk_log <- data.frame(unitid=numeric(),
-                       risk = numeric())
+#calculate safety score for each school
+safety_log <- data.frame(unitid=numeric(),
+                       safety = numeric())
 
 for (i in 1:nrow(grouped)){
   #initialize
-  risk <- 0
+  safety <- 0
   
   #subset without unitid
   name = grouped[i,1]
@@ -654,27 +655,50 @@ for (i in 1:nrow(grouped)){
   
   #calculate values
   tmp$product <- tmp$data * tmp$param
-  risk <- risk + sum(tmp$product)
+  safety <- safety + sum(tmp$product)
   
   #add to log
-  risk_log <- risk_log %>% add_row(unitid = name, risk = risk)
+  safety_log <- safety_log %>% add_row(unitid = name, safety = safety)
 }
 
-#add back to risk
-grouped$risk <- risk_log$risk
-grouped$logRisk <- log(risk_log$risk)
+#add back to safety
+grouped$safety <- -(safety_log$safety)
+grouped$logsafety <- log(grouped$safety)
 ```
 
 ```{r}
 cor(grouped)
-ggplot(grouped, aes(x = risk, y = cinsoff, col = cluster))+
+ggplot(grouped, aes(x = safety, y = cinsoff, color=safety))+
   geom_point()
-ggplot(grouped, aes(x = logRisk, y = cinsoff, col = cluster))+
+ggplot(grouped, aes(x = logsafety, y = cinsoff, color=safety))+
   geom_point()
 ```
 
 
 
+```{r}
+df_clusters <- read_csv('~/Desktop/DFs/df_alldatawithclusters.csv')
+
+df_clusters <- df_clusters %>% 
+  group_by(unitid) %>%
+  summarise_each(mean)
+
+df_clusters$cluster<-round(df_clusters$cluster)
+
+df_all_clusters<-inner_join(grouped,df_clusters)
+
+df_all_clusters$cluster<-factor(df_all_clusters$cluster)
+
+ggplot(df_all_clusters, aes(cluster, safety, group = cluster, color = cluster))+
+  geom_boxplot()
+  ggtitle("safety")
+  
+ggplot(df_all_clusters, aes(x = safety, y = cinsoff, col = cluster))+
+  geom_point()
+ggplot(df_all_clusters, aes(x = safety, y = cotsoff, col = cluster))+ 
+geom_point()
+  
+```
 
 
 ------
