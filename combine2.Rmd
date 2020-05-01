@@ -1,6 +1,6 @@
 ---
-title: "Untitled"
-author: "Lyufan Pan"
+title: "Federal Loan Default"
+author: "BU MSBA Cohort B Team 8 (Kyle Blackburn, Fernanda Lin, Hongyang Liu, Lyufan Pan and Mansi Tolia)"
 date: "March 19, 2020"
 output: html_document
 ---
@@ -9,7 +9,7 @@ output: html_document
 
 -----
 
-# Load those libraries!!
+# Libraries
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
@@ -25,28 +25,34 @@ library(car)
 library(ridge)
 library(tibble)
 ```
-
-# Raw data/Cleaning
+  
+  
+# Load raw data
 ```{r message=FALSE, warning=FALSE}
 #load
 scorecard <- readRDS("~/Desktop/cleaned_scorecard.rds")
 ipeds <- read_csv("~/Desktop/ipeds.csv")
+```
 
-#basic clean
+
+-----
+
+
+# Cleaning
+```{r message=FALSE, warning=FALSE}
+#columns fix
 names(scorecard) <- tolower(names(scorecard))
 names(ipeds) <- tolower(names(ipeds))
 
 #merge datasets based on unitid and year
 combined <- merge(ipeds, scorecard, by = c("unitid", "year"))
 
-#separate out ACT/SAT for late evalutation
+#separate out ACT/SAT, repayment for Tableu
 testScores <- combined %>% select(unitid, year, starts_with("act"), starts_with("sat"))
-
-#separate out repayment rate
 repaymentRate <- combined %>% select(unitid, year, contains("rpy"))
 
 #combine default rates
-combined$default <- rowMeans(combined[,c("cdr2","cdr3")], na.rm = T)
+combined$default <- rowMeans(combined[ , c("cdr2","cdr3")], na.rm = T)
 
 #remove empty columns, duplicates, unhelpful booleans
 combined$countycd <- NULL
@@ -72,7 +78,7 @@ combined$menonly <- NULL
 combined$womenonly <- NULL
 combined$pbi <- NULL
 combined$hbcu <- NULL
-combined[,c("satnum", "satpct", "actnum", "actpct", "satvr25", "satvr75", "satmt25", "satmt75", "actcm25", "actcm75", "acten25", "acten75", "actmt25", "actmt75")] <- NULL
+combined[,c("satnum", "satpct", "actnum", "actpct", "satvr25", "satvr75", "satmt25", "satmt75", "actcm25", "actcm75", "acten25", "acten75", "actmt25", "actmt75", "npt412", "npt422", "npt432", "npt442", "npt452")] <- NULL
 combined$cdr2 <- NULL
 combined$cdr3 <- NULL
 combined$loan_ever <- NULL
@@ -80,14 +86,10 @@ combined$par_ed_n <- NULL
 combined$appl_sch_n <- NULL
 
 #change to decimal
-combined[, c("dvadm02", "dvadm03", "dvadm05", "dvadm06", "dvef14", "floan_p", "loan_p")] <- combined[, c("dvadm02", "dvadm03", "dvadm05", "dvadm06", "dvef14", "floan_p", "loan_p")]/100
-combined[,c("grrt2m", "grrtan", "grrtap", "grrtbk", "grrths", "grrtm", "grrtun", "grrtw", "grrtwh")] <- combined[,c("grrt2m", "grrtan", "grrtap", "grrtbk", "grrths", "grrtm", "grrtun", "grrtw", "grrtwh")]/100
+combined[, c("dvadm02", "dvadm03", "dvadm05", "dvadm06", "dvef14", "floan_p", "loan_p")] <- combined[, c("dvadm02", "dvadm03", "dvadm05", "dvadm06", "dvef14", "floan_p", "loan_p", "grrt2m", "grrtan", "grrtap", "grrtbk", "grrths", "grrtm", "grrtun", "grrtw", "grrtwh")] / 100
 
 #select out repayment
 combined <- combined %>% select(-contains("rpy"))
-
-#not using these anymore
-combined[,c("npt412", "npt422", "npt432", "npt442", "npt452")] <- NULL
 
 #select columns with <= 50% NA
 combined <- combined[, which((colSums(is.na(combined)) / nrow(combined)) <= 0.5)]
@@ -110,21 +112,21 @@ testScores <- read_csv('~/Desktop/testScores.csv')
 -----
 
 
-# Dimensionality Reduction (Kmeans on PCIP)
-```{r}
-#kmeans cluster analysis on pcip
+# Dimensionality Reduction (Kmeans on PCIPs only)
+```{r message=FALSE, warning=FALSE}
+#select only PCIPs
 combined %>% select(starts_with("pcip"), "unitid", 'year') -> pcip
 
 #filter out empty rows
 pcip <- pcip[rowSums(is.na(pcip)) != max(rowSums(is.na(pcip))), ]
 
-#kmeans - 4clusters
+#kmeans -- 4clusters
 p <- pcip %>% select(-c("unitid", 'year')) %>% scale()
 k4 <- kmeans(p, centers = 4, iter.max = 25, nstart = 25)
 #fviz_cluster(k4, data = p)
 
 #check table of clusters
-table(k4$cluster)
+#table(k4$cluster)
 
 #add cluster assignment and drop all pcip cols
 pcip$cluster <- k4$cluster
@@ -134,33 +136,31 @@ pcip1 <- pcip %>% select(unitid, year, cluster)
 df_k4cluster <- inner_join(combined, pcip1, by = c("unitid", "year") )
 ```
 
+
 # PCA on PCIP
 ```{r}
-## generate the correlation matrix
-pcip %>% 
-  select(-unitid, -cluster) -> pcip2
-
-pcip_cor <- cor(pcip2)
-
-corrplot(pcip_cor, 
-         method = "color", 
-         type="upper", 
-         diag=F,
-         order = "hclust")
-```
-
-Learned that PCIP only really explain about 12% of the variance in the data, maybe let's not use them or rely on them heavily.
-```{r}
-# pca
-pcip_pca = prcomp(pcip2, center=T, scale=T)
-fviz_screeplot(pcip_pca, addlables = T, ylim=c(0, 20))
-get_eigenvalue(pcip_pca)
-
-#visualize
-fviz_pca_var(pcip_pca, col.var = "contrib")
-fviz_contrib(pcip_pca, choice = "var")
-fviz_contrib(pcip_pca, choice = "var", axes = 2)
-fviz_contrib(pcip_pca, choice = "var", axes = 3)
+# # correlation matrix
+# pcip %>% 
+#   select(-unitid, -cluster) -> pcip2
+# 
+# pcip_cor <- cor(pcip2)
+# 
+# corrplot(pcip_cor, 
+#          method = "color", 
+#          type="upper", 
+#          diag=F,
+#          order = "hclust")
+# 
+# # pca
+# pcip_pca = prcomp(pcip2, center=T, scale=T)
+# fviz_screeplot(pcip_pca, addlables = T, ylim=c(0, 20))
+# get_eigenvalue(pcip_pca)
+# 
+# #visualize
+# fviz_pca_var(pcip_pca, col.var = "contrib")
+# fviz_contrib(pcip_pca, choice = "var")
+# fviz_contrib(pcip_pca, choice = "var", axes = 2)
+# fviz_contrib(pcip_pca, choice = "var", axes = 3)
 ```
 
 
@@ -168,9 +168,8 @@ fviz_contrib(pcip_pca, choice = "var", axes = 3)
 
 
 # Imputation - create various copies of `combined` using different imputation methods
-
-Function: Impute column-wise median values grouped by year
 ```{r}
+#Function: Impute column-wise median values grouped by year
 impute_by_year <- function(df, statistic){
   
   #select only numeric columns
@@ -207,9 +206,9 @@ impute_by_year <- function(df, statistic){
 ------
 
 
-# Df Versions
-## 1. Median imputation by year without cluster
-```{r}
+# Df Versions  
+## 1. Imputation by year without cluster
+```{r message=FALSE, warning=FALSE}
 #mean
 df_mean <- copy(combined)
 df_mean <- impute_by_year(df_mean, mean)
@@ -219,25 +218,25 @@ df_mean[is.na(df_mean)] <- 0 #empty out remaining NAs
 #median
 df_median <- copy(combined)
 df_median <- impute_by_year(df_median, median)
-df_median <- df_median[, colSums(is.na(df_median)) <= 10000] #get rid of anything left that has over 10k NAs
-df_median[is.na(df_median)] <- 0 #empty out remaining NAs
+df_median <- df_median[, colSums(is.na(df_median)) <= 10000]
+df_median[is.na(df_median)] <- 0
 
 #min
 df_min <- copy(combined)
 df_min <- impute_by_year(df_min, min)
-df_min <- df_min[, colSums(is.na(df_min)) <= 10000] #get rid of anything left that has over 10k NAs
-df_min[is.na(df_min)] <- 0 #empty out remaining NAs
+df_min <- df_min[, colSums(is.na(df_min)) <= 10000]
+df_min[is.na(df_min)] <- 0
 
 #max
 df_max <- copy(combined)
 df_max <- impute_by_year(df_max, max)
-df_max <- df_max[, colSums(is.na(df_max)) <= 10000] #get rid of anything left that has over 10k NAs
-df_max[is.na(df_max)] <- 0 #empty out remaining NAs
+df_max <- df_max[, colSums(is.na(df_max)) <= 10000]
+df_max[is.na(df_max)] <- 0
 ```
 
 
-## 2. Median imputation by year with cluster
-```{r}
+## 2. Imputation by year with cluster
+```{r message=FALSE, warning=FALSE}
 #mean
 df_mean_c <- copy(df_k4cluster)
 df_mean_c <- impute_by_year(df_mean_c, mean)
@@ -247,24 +246,24 @@ df_mean_c[is.na(df_mean_c)] <- 0 #empty out remaining NAs
 #median
 df_median_c <- copy(df_k4cluster)
 df_median_c <- impute_by_year(df_median_c, median)
-df_median_c <- df_median_c[, colSums(is.na(df_median_c)) <= 10000] #get rid of anything left that has over 10k NAs
-df_median_c[is.na(df_median_c)] <- 0 #empty out remaining NAs
+df_median_c <- df_median_c[, colSums(is.na(df_median_c)) <= 10000]
+df_median_c[is.na(df_median_c)] <- 0
 
 #min
 df_min_c <- copy(df_k4cluster)
 df_min_c <- impute_by_year(df_min_c, min)
-df_min_c <- df_min_c[, colSums(is.na(df_min_c)) <= 10000] #get rid of anything left that has over 10k NAs
-df_min_c[is.na(df_min_c)] <- 0 #empty out remaining NAs
+df_min_c <- df_min_c[, colSums(is.na(df_min_c)) <= 10000]
+df_min_c[is.na(df_min_c)] <- 0
 
 #max
 df_max_c <- copy(df_k4cluster)
 df_max_c <- impute_by_year(df_max_c, max)
-df_max_c <- df_max_c[, colSums(is.na(df_max_c)) <= 10000] #get rid of anything left that has over 10k NAs
-df_max_c[is.na(df_max_c)] <- 0 #empty out remaining NAs
+df_max_c <- df_max_c[, colSums(is.na(df_max_c)) <= 10000]
+df_max_c[is.na(df_max_c)] <- 0
 ```
 
 
-## 3. Replace all NA values in original df with 0 (uni didn't report them or keep track scenario)
+## 3. NA values to 0 (scenario: university didn't report them or keep track)
 ```{r}
 #school didn't report it/change default NAs to 0
 combined_zeroes <- copy(combined)
@@ -272,12 +271,12 @@ combined_zeroes[is.na(combined_zeroes)] <- 0
 ```
 
 
-## 4. Variable Specific
+## 4. Variable Specific imputation/cleaning
 ```{r warning=FALSE}
 #create a copy
 combined_variable <- copy(combined)
 
-#replace booleans with probability of mean
+#replace booleans with probability of mean(variable)
 combined_variable$pcuenran[is.na(combined_variable$pcuenran)] <- rbinom(n=length(combined_variable$pcuenran), size=1, prob=mean(combined_variable$pcuenran, na.rm = T))
 combined_variable$pcuenrnh[is.na(combined_variable$pcuenrnh)] <- rbinom(n=length(combined_variable$pcuenrnh), size=1, prob=mean(combined_variable$pcuenrnh, na.rm = T))
 
@@ -285,11 +284,13 @@ combined_variable$pcuenrnh[is.na(combined_variable$pcuenrnh)] <- rbinom(n=length
 combined_variable$default[is.na(combined_variable$default)] <- 0
 
 #replace all NA in PCIP to 0
-combined_variable[ ,grep("pcip", names(combined_variable))][is.na(combined_variable[ ,grep("pcip", names(combined_variable))])] <- 0
+combined_variable[ , grep("pcip", names(combined_variable)) ][is.na(combined_variable[ ,grep("pcip", names(combined_variable))])] <- 0
 
 #no age comparison needed
 combined_variable$dvef14 <- NULL
 
+
+####################################################################################
 #median imputation
 combined_variable %>%
   select(unitid, year, avgfacsal, cinsoff, cotsoff, debt_mdn, floan_a, 
@@ -301,8 +302,7 @@ combined_variable %>%
 combined_variable %>% 
   select(-c(names(tmp_medians)), unitid, year) %>%
   left_join(tmp_medians, by = c("unitid", "year")) -> combined_variable_median
-
-
+####################################################################################
 #mean imputation
 combined_variable %>%
   select(unitid, year, avgfacsal, cinsoff, cotsoff, debt_mdn, floan_a, 
@@ -314,14 +314,11 @@ combined_variable %>%
 combined_variable %>% 
   select(-c(names(tmp_mean)), unitid, year) %>%
   left_join(tmp_mean, by = c("unitid", "year")) -> combined_variable_mean
-
-#write out
-write_csv(combined_variable_median, '~/Desktop/combined_variable_median.csv')
-write_csv(combined_variable_mean, '~/Desktop/combined_variable_mean.csv')
+####################################################################################
 ```
 
 
-# Write all data to csv for GCP
+# Write all versions to csv
 ```{r}
 dfs = list(combined_variable_mean, 
            combined_variable_median,
@@ -350,7 +347,6 @@ for (i in 1:length(dfs)){
   df <- dfs[[i]]
   write_csv(df, paste0('~/Desktop/DFs/', dfs_names[i], '.csv'))
 }
-
 ```
 
 
@@ -358,8 +354,9 @@ for (i in 1:length(dfs)){
 
 
 # Random Forest
-Create a function that takes in a dataframe (some version of combined after imputing), runs a model (RF), and records out-of-sample MSE on a log. 
 ```{r}
+# Create a function that takes in a dataframe (some version of combined after imputing), runs a model (RF), and records out-of-sample MSE on a log. Trees set to default = 1, should be changed if used!
+
 rf <- function(df, trees = 1){
   
   set.seed(1234)
@@ -427,57 +424,38 @@ rf_results <- data.frame(name=numeric(),
                          mse_train=numeric(),
                          mse_test = numeric())
 
-#for loop to run through df's
-dfs = list(combined_variable_mean, 
-           combined_variable_median,
-           df_median, 
-           df_mean,
-           df_min,
-           df_max,
-           df_median_c, 
-           df_mean_c,
-           df_min_c,
-           df_max_c,
-           combined_zeroes)
-
-dfs_names = c("combined_variable_mean", 
-           "combined_variable_median",
-           "df_median", 
-           "df_mean",
-           "df_min",
-           "df_max",
-           "df_median_c", 
-           "df_mean_c",
-           "df_min_c",
-           "df_max_c",
-           "combined_zeroes")
-
 #loop
 for (i in 1:length(dfs)){
   df <- dfs[[i]]
-  result = rf(df, trees = 10)
+  result = rf(df, trees = 1)
   rf_results <- rf_results %>% add_row(name = dfs_names[i],
                                        mse_train = result[[2]],
                                        mse_test = result[[3]])
 }
+
+#we ended up running with 100 trees, finding that df_mean provided us with the most predictive accuracy
 ```
 
 
 ------
 
-#Add Mansi clustering, get rid of `default` outliers
-```{r message=FALSE, warning=FALSE}
-df_mean <- read_csv('~/Desktop/DFs/df_mean.csv')
-cluster <- read_csv('~/Desktop/DFs/df_clusters.csv') %>% select(cluster)
-#df_mean <- add_column(df_mean, cluster = cluster$cluster, .after = names[length(names)-1])
 
-iqrDefault <- IQR(df_mean$default)
-df_mean <- df_mean[df_mean$default <= (mean(df_mean$default)+iqrDefault), ]
+# Get rid of outliers in `default` 
+```{r message=FALSE, warning=FALSE}
+df_cluster <- read_csv('~/Desktop/df_alldatawithclusters.csv')
+names(df_cluster) <- tolower(names(df_cluster))
+names(df_cluster) <- str_replace(names(df_cluster), "&", "")
+names(df_cluster) <- str_replace(names(df_cluster), " ", "_")
+names(df_cluster) <- str_replace(names(df_cluster), " ", "")
+df_cluster <- df_cluster[df_cluster$default <= (mean(df_cluster$default)+IQR(df_cluster$default)), ]
+df_mean <- df_cluster %>% select(-cluster)
 ```
 
 
-# Linear regression on best df_mean
-```{r warning=FALSE}
+# Linear regression on df_mean
+```{r message=FALSE, warning=FALSE}
+set.seed(1234)
+
 #split 80/20
 index <- sample(1:nrow(df_mean), 0.8*nrow(df_mean))
 train <- df_mean[index, ]
@@ -502,14 +480,13 @@ mean((test$default-predsRidgeTest)^2, na.rm = T)
 ```
 
 # Split by time 2008-2015/2016-2017
-```{r}
-years_index <- 2008:2015
-train <- subset(df_mean, year>=2008 & year <= 2015)
-test <- subset(df_mean, year>2015)
+```{r message=FALSE, warning=FALSE}
+trainTime <- subset(df_mean, year>=2008 & year <= 2015)
+testTime <- subset(df_mean, year>2015)
 
-fitTime <- lm(default~., train)
-predsTimeTrain <- predict(fitTime, train)
-predsTimeTest <- predict(fitTime, test)
+fitTime <- lm(default~., trainTime)
+predsTimeTrain <- predict(fitTime, trainTime)
+predsTimeTest <- predict(fitTime, testTime)
 mean((train$default-predsTimeTrain)^2, na.rm = T)
 mean((test$default-predsTimeTest)^2, na.rm = T)
 ```
@@ -517,93 +494,92 @@ mean((test$default-predsTimeTest)^2, na.rm = T)
 
 # Forward Selection
 ```{r}
-## forward selection
+#create names list
 xnames <- colnames(train)
-xnames <- xnames[!xnames %in% c("unitid", "default")]
+xnames <- xnames[!xnames %in% c("default", "unitid")]
 
-#start with the intercept model
+#Intercept only
 fit_fw <- lm(default ~ 1, data = train)
 
-#predict the yhats based off fit_fw
+## calculate MSE train and MSE test
 yhat_train <- predict(fit_fw, train)
+mse_train <- mean((train$default - yhat_train)^2)
 yhat_test <- predict(fit_fw, test)
+mse_test <- mean((test$default - yhat_test)^2)
 
-#calculate MSEs
-mse_train <- mean((train$default - yhat_train)^2, na.rm = T)
-mse_test <- mean((test$default - yhat_test)^2, na.rm = T)
+#create log
+log_fw <- 
+  tibble(
+    xname = "intercept",
+    model = deparse(fit_fw$call),
+    mse_train = mse_train,
+    mse_test = mse_test)
 
-#log the intercept only model to match against
-xname <- "intercept"
-log_fw <-tibble(
-  xname = xname,
-  model = paste0(deparse(fit_fw$call), collapse = ""),
-  mse_train = mse_train,
-  mse_test = mse_test
-)
+xnames_fw <- xnames
 
-# an outer while loop considers all potential predictors until all of them
-# have been added to the model
-while (length(xnames) > 0) {
+while (length(xnames_fw) > 0) {
   
-  # keep track of which is the next best variable to add
+  ## keep track of which is the next best variable to add
   best_mse_train <- NA
   best_mse_test <- NA
   best_fit_fw <- NA
   best_xname <- NA
   
-  # select the next best predictor
-  for (xname in xnames) {
+  ## select the next best predictor
+  for (xname in xnames_fw) {
     
-    # fit a model that adds the predictor xname to the current best model
-    # to do this you will want to use the update() command which can add a predictor
-    # to an existing model
-    fit_fw_tmp <- update(fit_fw, as.formula(paste0(" ~ ", xname)))
+    ## fit a model that ads the predictor xname to the current best model
+    ## to do this you will want to use the update() command which can ad a predictor
+    ## to an existing model
+    fit_fw_tmp <- update(fit_fw, as.formula(paste0(". ~ . +", xname)))
     
-    # compute MSE train
+    ## compute MSE train
     yhat_train_tmp <- predict(fit_fw_tmp, train)
-    mse_train_tmp <- mean((train$default - yhat_train_tmp)^2, na.rm = T)
+    mse_train_tmp <- mean((train$default - yhat_train_tmp)^2, na.rm = TRUE)
     
-    # compute MSE test
+    ## compute MSE test
     yhat_test_tmp <- predict(fit_fw_tmp, test)
-    mse_test_tmp <- mean((test$default - yhat_test_tmp)^2, na.rm = T)
+    mse_test_tmp <- mean((test$default - yhat_test_tmp)^2, na.rm = TRUE)
     
-    # if this is the first predictor to be examined,
-    # or if this predictors yields a lower MSE that the current
-    # best, then store this predictor as the current best predictor
-    if (is.na(best_mse_test) | mse_test_tmp < best_mse_test) {
+    ## if this is the first predictor to be examined
+    ## or if this predictors yields a lower MSE than the current best
+    ## then store this predictor as the current best predictor
+    if(is.na(best_mse_test) | mse_test_tmp < best_mse_test) {
       best_xname <- xname
       best_fit_fw <- fit_fw_tmp
       best_mse_train <- mse_train_tmp
       best_mse_test <- mse_test_tmp
     }
   }
-  # update the log
-  log_fw <-
-    log_fw %>% add_row(
+  
+  ## update the log
+  log_fw <- log_fw %>% 
+    add_row(
       xname = best_xname,
       model = paste0(deparse(best_fit_fw$call), collapse = ""),
       mse_train = best_mse_train,
       mse_test = best_mse_test
     )
-  # adopt the best model for the next iteration
+  
+  ## adopt the best model for the next iteraction
   fit_fw <- best_fit_fw
   
-  # remove the current best predictor from the list of predictors
-  xnames <- xnames[xnames != best_xname]
+  ## remove the current best predictor from the list of predictors
+  xnames_fw <- xnames_fw[xnames_fw != best_xname]
 }
 
-ggplot(log_fw,aes(seq_along(xname), mse_test))+
-  geom_point()+
-  geom_line()+
-  geom_point(aes(y = mse_train), color = "blue")+
-  geom_line(aes(y = mse_train), color = "blue")+
-  scale_x_continuous("Variables", labels = log_fw$xname, breaks = seq_along(log_fw$xname))+
-  scale_y_continuous("MSE test")+
-  theme(axis.text.x =element_text(angle = 45, hjust = 1))
+ggplot(log_fw, aes(seq_along(xname), mse_test)) +
+  geom_point() +
+  geom_line() +
+  geom_point(aes(y = mse_train), color = "blue") +
+  geom_line(aes(y = mse_train), color = "blue") +
+  scale_x_continuous("Variables", labels = log_fw$xname, breaks = seq_along(log_fw$xname)) +
+  scale_y_continuous("MSE test") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
 
-# Only top 20
+# Only top 20 linear model on time
 ```{r}
 #select top 20 (ignore intercept)
 keep <- log_fw$xname[2:21]
@@ -615,89 +591,89 @@ for(var in keep){
   }
 formula <- as.formula(loopformula)
 
+#split
+trainTime <- subset(df_cluster, year>=2008 & year <= 2015)
+testTime <- subset(df_cluster, year>2015)
+
 #linear model
-fit <- lm(formula = formula, train)
-predsTrain <- predict(fit, train)
-predsTest <- predict(fit, test)
-mean((train$default-predsTrain)^2, na.rm = T)
-mean((test$default-predsTest)^2, na.rm = T)
+fitTimeTop20 <- lm(formula, trainTime)
+predsTimeTrain <- predict(fitTimeTop20, trainTime)
+predsTimeTest <- predict(fitTimeTop20, testTime)
+mean((trainTime$default-predsTimeTrain)^2, na.rm = T)
+mean((testTime$default-predsTimeTest)^2, na.rm = T)
 ```
 
 
-# safety Scores based on model
+# Safety scores based on model
 ```{r}
-#save parameters
-params <- as.data.frame(coef(fitTime))
-params <- add_column(params, parameter = rownames(params), .before = coef(fitTime))
-rownames(params) <- NULL
-params <- params[params$parameter %in% keep, ]
-names(params) <- c("params", "coef")
+# #save parameters
+# params <- as.data.frame(coef(fitTimeTop20))
+# params <- add_column(params, parameter = rownames(params), .before = coef(fitTime))
+# rownames(params) <- NULL
+# params <- params[params$parameter %in% keep, ]
+# names(params) <- c("params", "coef")
+# 
+# #group by school
+# grouped <- df_mean %>% 
+#   select(unitid, keep) %>%
+#   group_by(unitid) %>%
+#   summarise_each(mean)
+# 
+# #calculate safety score for each school
+# safety_log <- data.frame(unitid=numeric(),
+#                        safety = numeric())
+# 
+# for (i in 1:nrow()){
+#   #initialize
+#   safety <- 0
+#   
+#   #subset without unitid
+#   name = grouped[i,1]
+#   vec <- grouped[i,-1]
+#   vec <- pivot_longer(vec, 1:ncol(vec))
+#   tmp <- as.data.frame(cbind(data = params$coef, param = vec$value))
+#   
+#   #calculate values
+#   tmp$product <- tmp$data * tmp$param
+#   safety <- safety + sum(tmp$product)
+#   
+#   #add to log
+#   safety_log <- safety_log %>% add_row(unitid = name, safety = safety)
+# }
+# 
+# #add back to safety
+# grouped$safety <- safety_log$safety
+```
 
-#group by school
-grouped <- df_mean %>% 
-  select(unitid, keep) %>%
+
+
+```{r message=FALSE, warning=FALSE}
+testTime$preds <- predsTimeTest
+
+testTime <- df_cluster %>% 
   group_by(unitid) %>%
   summarise_each(mean)
 
-#calculate safety score for each school
-safety_log <- data.frame(unitid=numeric(),
-                       safety = numeric())
+df_cluster$cluster <- factor(round(df_cluster$cluster))
+df_cluster$safety <- safety_log$safety
 
-for (i in 1:nrow(grouped)){
-  #initialize
-  safety <- 0
-  
-  #subset without unitid
-  name = grouped[i,1]
-  vec <- grouped[i,-1]
-  vec <- pivot_longer(vec, 1:ncol(vec))
-  tmp <- as.data.frame(cbind(data = params$coef, param = vec$value))
-  
-  #calculate values
-  tmp$product <- tmp$data * tmp$param
-  safety <- safety + sum(tmp$product)
-  
-  #add to log
-  safety_log <- safety_log %>% add_row(unitid = name, safety = safety)
-}
 
-#add back to safety
-grouped$safety <- -(safety_log$safety)
-grouped$logsafety <- log(grouped$safety)
-```
-
-```{r}
-cor(grouped)
-ggplot(grouped, aes(x = safety, y = cinsoff, color=safety))+
+ggplot(testTime, aes(cluster, preds, group = cluster, color = cluster))+
+  geom_boxplot()+
+  labs(title = "Risk by cluster", x = "Cluster", y = "Risk")
+  
+ggplot(testTime, aes(x = preds, y = cinsoff, col = cluster))+
   geom_point()
-ggplot(grouped, aes(x = logsafety, y = cinsoff, color=safety))+
-  geom_point()
-```
 
-
-
-```{r}
-df_clusters <- read_csv('~/Desktop/DFs/df_alldatawithclusters.csv')
-
-df_clusters <- df_clusters %>% 
-  group_by(unitid) %>%
-  summarise_each(mean)
-
-df_clusters$cluster<-round(df_clusters$cluster)
-
-df_all_clusters<-inner_join(grouped,df_clusters)
-
-df_all_clusters$cluster<-factor(df_all_clusters$cluster)
-
-ggplot(df_all_clusters, aes(cluster, safety, group = cluster, color = cluster))+
-  geom_boxplot()
-  ggtitle("safety")
-  
-ggplot(df_all_clusters, aes(x = safety, y = cinsoff, col = cluster))+
-  geom_point()
-ggplot(df_all_clusters, aes(x = safety, y = cotsoff, col = cluster))+ 
+ggplot(testTime, aes(x = preds, y = cotsoff, col = cluster))+ 
 geom_point()
-  
+
+
+
+hist(testTime$preds)
+
+
+testTime %>% select_if(is.numeric) %>% cor() %>% View()
 ```
 
 
