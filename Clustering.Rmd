@@ -5,6 +5,7 @@ date: "4/15/2020"
 output: pdf_document
 ---
 
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 options(scipen = 999)
@@ -20,90 +21,158 @@ library(cluster)
 library(fmsb)
 library(RColorBrewer)
 library(data.table)
+library(ggplot2)
 ```
 
-##Performing Clustering
-```{r}
 
-df_mean <- read_csv("../df_mean.csv")
+------
+
+
+# Loading Data and Renameing Columns: 
+```{r}
+df_mean <- read_csv("df_mean.csv")
+df_mean <- df_mean %>% rename("Conservation"  = pcip03,
+                             "Architecture"= pcip04,
+                              "Cultural Studies"= pcip05,
+                              "Journalism"= pcip09,
+                              "Communications Technicians"= pcip10,
+                             "nformation Sciences" = pcip11,
+                             "Culinary" = pcip12,
+                             "Education" = pcip13,
+                             "Engineering" = pcip14,
+                             "Engineering Technologies " = pcip15,
+                             "Foreign Languages" = pcip16,
+                             "Human Sciences" = pcip19,
+                             "Legal Professions" = pcip22,
+                             "English Language" = pcip23,
+                             "Liberal Arts" = pcip24,
+                             "Library Science" = pcip25,
+                             "Biological Sciences" = pcip26,
+                             "Math" = pcip27,
+                             "Military Technologies" = pcip29,
+                             "Interdisciplinary Studies" = pcip30,
+                             "Fitness Studies" = pcip31,
+                             "Religious Studies" = pcip38,
+                             "Theology" = pcip39,
+                             "Physics" = pcip40,
+                             "Science Technicians" = pcip41,
+                             "Psychology" = pcip42,
+                             "Law Enforcement" = pcip43,
+                             "Social Service" = pcip44,
+                             "Social Sciences" = pcip45,
+                             "Construction Trades" = pcip46,
+                             "Repair Technicians" = pcip47,
+                             "Precision Production" = pcip48,
+                             "Transportation" = pcip49,
+                             "Performing Arts" = pcip50,
+                             "Health Professions" = pcip51,
+                             "Business & Management" = pcip52,
+                             "History" = pcip54)
+```
+
+
+-----
+
+
+# Figuring out optimal number of clusters:
+```{r}
+#determine clusters needed with Elbow plots
+
+################################################################
+#sample dataframe
+sample1 <- df_mean[sample(1:nrow(df_mean), 5000, replace=FALSE),]
+sample1_scaled = scale(sample1)
+
+x = 1:20
+k_wss = function(a) {
+  km = kmeans(sample1_scaled, a, nstart=25, iter=25)
+  kwss = km$tot.withinss
+  return(kwss)
+}
+wss = map_dbl(x, k_wss)
+plot(x, wss, type="b", main="Optimal K")
+
+################################################################
+sample2 <- df_mean[sample(1:nrow(df_mean), 5000, replace=FALSE),]
+sample2_scaled = scale(sample2)
+
+x = 1:20
+k_wss = function(a) {
+  km = kmeans(sample2_scaled, a, nstart=25, iter=25)
+  kwss = km$tot.withinss
+  return(kwss)
+}
+wss = map_dbl(x, k_wss)
+plot(x, wss, type="b", main="Optimal K")
+
+################################################################
+sample3 <- df_mean[sample(1:nrow(df_mean), 5000, replace=FALSE),]
+sample3_scaled = scale(sample3)
+
+x = 1:20
+k_wss = function(a) {
+  km = kmeans(sample3_scaled, a, nstart=25, iter=25)
+  kwss = km$tot.withinss
+  return(kwss)
+}
+wss = map_dbl(x, k_wss)
+plot(x, wss, type="b", main="Optimal K")
+```
+
+
+-----
+
+
+# Performing Clustering with 3 clusters:
+```{r}
+set.seed(1234)
+
 #Scale dataset:
 df_scaled = scale(df_mean)
-k = kmean(df_scaled, centers=7 , nstart=20, iter.max = 25)
+k = kmeans(df_scaled, centers=3 , nstart=20, iter.max = 25)
 #fviz_cluster(k, data=df_scaled)	
 table(k$cluster)
 
 df_mean$cluster <- k$cluster
+
+write_csv(df_mean, 'df_alldatawithclusters.csv')
+
 ```
 
-##Preparing variables and tables for plotting radar charts
+
+# Preparing variables and tables for plotting radar charts:
 ```{r}
 ###################################################################
 #Preparing PCIP for clustering
 ###################################################################
+
 radar_pcip <- df_mean%>%group_by(cluster) %>%
   summarise(
-    pcip03 = mean(pcip05, na.rm = T),
-    pcip04 = mean(pcip04, na.rm = T),
-    pcip05 = mean(pcip05, na.rm = T),
-    pcip09 = mean(pcip09, na.rm = T),
-    pcip10 = mean(pcip10, na.rm = T),
-    pcip11 = mean(pcip11, na.rm = T),
-    pcip12 = mean(pcip12, na.rm = T),
-    pcip13 = mean(pcip13, na.rm = T),
-    pcip14 = mean(pcip14, na.rm = T),
-    pcip15 = mean(pcip15, na.rm = T),
-    pcip16 = mean(pcip16, na.rm = T),
-    pcip19 = mean(pcip19, na.rm = T),
-    pcip22 = mean(pcip22, na.rm = T),
-    pcip23 = mean(pcip23, na.rm = T),
-    pcip24 = mean(pcip24, na.rm = T),
-    pcip25 = mean(pcip25, na.rm = T),
-    pcip26 = mean(pcip26, na.rm = T),
-    pcip27 = mean(pcip27, na.rm = T),
-    pcip29 = mean(pcip29, na.rm = T),
-    pcip30 = mean(pcip30, na.rm = T),
-    pcip31 = mean(pcip31, na.rm = T),
-    pcip38 = mean(pcip38, na.rm = T),
-    pcip39 = mean(pcip39, na.rm = T),
-    pcip40 = mean(pcip40, na.rm = T),
-    pcip41 = mean(pcip41, na.rm = T),
-    pcip42 = mean(pcip42, na.rm = T),
-    pcip43 = mean(pcip43, na.rm = T),
-    pcip44 = mean(pcip44, na.rm = T),
-    pcip45 = mean(pcip45, na.rm = T),
-    pcip46 = mean(pcip46, na.rm = T),
-    pcip47 = mean(pcip47, na.rm = T),
-    pcip48 = mean(pcip48, na.rm = T),
-    pcip49 = mean(pcip49, na.rm = T),
-    pcip50 = mean(pcip50, na.rm = T),
-    pcip51 = mean(pcip51, na.rm = T),
-    pcip52 = mean(pcip52, na.rm = T),
-    pcip54 = mean(pcip54, na.rm = T))
+    `Culinary` = mean(`Culinary`, na.rm = T),
+    `Education` = mean(`Education`, na.rm = T),
+    `Liberal Arts` = mean(`Liberal Arts`, na.rm = T),
+    `Religious Studies` = mean(`Religious Studies`, na.rm = T),
+    `Theology` = mean(`Theology`, na.rm = T),
+    `Law Enforcement` = mean(`Law Enforcement`, na.rm = T),
+    `Construction Trades` = mean(`Construction Trades`, na.rm = T),
+    `Repair Technicians` = mean(`Repair Technicians`, na.rm = T),
+    `Repair Technicians` = mean(`Repair Technicians`, na.rm = T),
+    `Business & Management` = mean(`Business & Management`, na.rm = T))
 
-# ###################################################################
-# #Preparing ACT Scores for clustering
-# ###################################################################
-# 
-# radar_act <- df_mean%>%group_by(cluster) %>%
-#   summarise(
-#     actcm25 = mean(actcm25, na.rm = T),
-#     actcm75 = mean(actcm75, na.rm = T),
-#     acten25 = mean(acten25, na.rm = T),
-#     acten75 = mean(acten75, na.rm = T),
-#     actmt25 = mean(actmt25, na.rm = T),
-#     actmt75 = mean(actmt75, na.rm = T))
-# 
-# 
-# ###################################################################
-# #Preparing SAT Scores for clustering
-# ###################################################################
-# 
-# radar_sat <- df_mean%>%group_by(cluster) %>%
-#   summarise(
-#     satmt25 = mean(satvr25, na.rm = T),
-#     satmt75 = mean(satvr75, na.rm = T),
-#     satvr25 = mean(satmt25, na.rm = T),
-#     satvr75 = mean(satmt75, na.rm = T))
+###################################################################
+#Preparing debt and default rates for clustering
+###################################################################
+
+radar_debt <- df_mean%>%group_by(cluster) %>%
+  summarise(
+    # debt_mdn = mean(debt_mdn, na.rm = T),
+    # grad_debt_mdn = mean(grad_debt_mdn, na.rm = T),
+    default = mean(default, na.rm = T),
+    # loan_a = mean(loan_a, na.rm = T),
+    # loan_p = mean(loan_p, na.rm = T),
+    floan_a = mean(floan_a, na.rm = T),
+    floan_p = mean(floan_p, na.rm = T))
+
 
 ###################################################################
 #Preparing Graduation Rates by Race for clustering
@@ -118,90 +187,33 @@ radar_gr_race_gender <- df_mean%>%group_by(cluster) %>%
     grrtm = mean(grrtm, na.rm = T),
     grrtw = mean(grrtw, na.rm = T))
 
-# 
-# ###################################################################
-# #Preparing NPT for clustering
-# ###################################################################
-# 
-# radar_npt <- df_mean%>%group_by(cluster) %>%
-#   summarise(
-#     npt4_pub = mean(npt4_pub, na.rm = T),
-#     npt4_priv = mean(npt4_priv, na.rm = T),
-#     npt41_pub = mean(npt41_pub, na.rm = T),
-#     npt43_pub = mean(npt43_pub, na.rm = T),
-#     npt44_pub = mean(npt44_pub, na.rm = T), 
-#     npt45_pub = mean(npt45_pub, na.rm = T), 
-#     npt41_priv = mean(npt41_priv, na.rm = T),
-#     npt42_priv  = mean(npt42_priv, na.rm = T), 
-#     npt43_priv = mean(npt43_priv, na.rm = T), 
-#     npt44_priv = mean(npt44_priv, na.rm = T),
-#     npt45_priv = mean(npt45_priv, na.rm = T))
-
-###################################################################
-#Preparing debt and default rates for clustering
-###################################################################
-
-radar_debt <- df_mean%>%group_by(cluster) %>%
-  summarise(
-    debt_mdn = mean(debt_mdn, na.rm = T),
-    grad_debt_mdn = mean(grad_debt_mdn, na.rm = T),
-    default = mean(default, na.rm = T),
-    loan_a = mean(loan_a, na.rm = T),
-    loan_p = mean(loan_p, na.rm = T),
-    floan_a = mean(floan_a, na.rm = T),
-    floan_p = mean(floan_p, na.rm = T))
-
-
-###################################################################
-# #Preparing admission rates for clustering
-# ###################################################################
-# 
-# radar_admissions <- df_mean%>%group_by(cluster) %>%
-#   summarise(
-#     dvadm02 = mean(dvadm02, na.rm = T),  
-#     dvadm03 = mean(dvadm03, na.rm = T),
-#     dvadm05 = mean(dvadm05, na.rm = T),
-#     dvadm06 = mean(dvadm06, na.rm = T))
-```
-
-```{r}
 ##Adding clusters to rownames()
-rownames(radar_pcip) <- paste("cluster" , letters[1:7] , sep="-")
-# rownames(radar_act) <- paste("cluster" , letters[1:7] , sep="-")
-# rownames(radar_sat) <- paste("cluster" , letters[1:7] , sep="-")
-rownames(radar_gr_race_gender) <- paste("cluster" , letters[1:7] , sep="-")
-# rownames(radar_npt) <- paste("cluster" , letters[1:7] , sep="-")
-rownames(radar_debt) <- paste("cluster" , letters[1:7] , sep="-")
-# rownames(radar_admissions) <- paste("cluster" , letters[1:7] , sep="-")
+rownames(radar_pcip) <- paste("cluster" , letters[1:3] , sep="-")
+rownames(radar_debt) <- paste("cluster" , letters[1:3] , sep="-")
+rownames(radar_gr_race_gender) <- paste("cluster" , letters[1:3] , sep="-")
+
 
 ##removing clusters column from tables
 radar_pcip <- radar_pcip %>% select(-cluster)
-# radar_act <- radar_act %>% select(-cluster)
-# radar_sat <- radar_sat %>% select(-cluster)
-radar_gr_race_gender <- radar_gr_race_gender %>% select(-cluster)
-# radar_npt <- radar_npt %>% select(-cluster)
 radar_debt <- radar_debt %>% select(-cluster)
-# radar_admissions <- radar_admissions %>% select(-cluster)
+radar_gr_race_gender <- radar_gr_race_gender %>% select(-cluster)
+
+
 ```
 
-#Radar Chart ased On PCIP
+
+#Radar Chart ased On PCIP:
 ```{r}
-colors_border=c( rgb(1,0,0,0.9), 
+colors_border=c( rgb(0.4,0,0.6,0.9), 
                  rgb(0,0.4,0.2,0.9),  
-                 rgb(0,0.4,1,0.9),
-                 rgb(1,0.6,1,0.9),
-                 rgb(1,0.6,0.2,0.9),
-                 rgb(0.6,0,0.2,0.9),
-                 rgb(0.4,0,0.6,0.9))
-colors_in=c( rgb(1,0,0,0.4), 
+                 rgb(0,0.4,1,0.9))
+
+colors_in=c( rgb(0.4,0,0.6,0.4), 
              rgb(0,0.4,0.2,0.4) , 
-             rgb(0,0.4,1,0.4),
-             rgb(1,0.6,1,0.4),
-             rgb(1,0.6,0.2,0.4),
-             rgb(0.6,0,0.2,0.4),
-             rgb(0.4,0,0.6,0.4))
+             rgb(0,0.4,1,0.4))
 
 par(xpd = TRUE, mar = c(1, 2, 2,1))
+
 # plot with default options:
 radarchart( radar_pcip, axistype=0, 
             maxmin=F,
@@ -213,7 +225,7 @@ radarchart( radar_pcip, axistype=0,
             cglwd=0.8,
             #custom labels
             vlcex=0.8,
-            title = "Clustering On PCIP")
+            title = "Clustering On Field Of Study")
 
 # Add a legend
 legend(x ="topright",
@@ -224,109 +236,9 @@ legend(x ="topright",
        cex=0.9, pt.cex=3)
 ```
 
-#Radar Chart based on ACT Scores
-```{r}
-# par(xpd = TRUE, mar = c(0.5, 2, 2, 0.5))
-# radarchart( radar_act, axistype=0 , 
-#             maxmin=F,
-#             #custom polygon
-#             pcol=colors_border , pfcol=colors_in , plwd=4 , plty=1,
-#             #custom the grid
-#             cglcol="grey", 
-#             cglty=1, axislabcol="darkgrey", 
-#             #caxislabels=seq(0,500,100),
-#             cglwd=0.8,
-#             calcex = 0.5,
-#             palcex = 2,
-#             centerzero = TRUE,
-#             #custom labels
-#             vlcex=,
-#             title = "Clustering on ACT Scores")
-# 
-# # Add a legend
-# legend(x ="topright",
-#        legend = rownames(radar_act),
-#        bty = "n", pch=20 , 
-#        col=colors_in , 
-#        text.col = "grey", 
-#        cex=0.8, pt.cex=2)
-```
-
-#Radar Chart based on SAT Scores
-```{r}
-# radarchart( radar_sat, axistype=0 , 
-#             maxmin=F,
-#             #custom polygon
-#             pcol=colors_border , pfcol=colors_in , plwd=4 , plty=1,
-#             #custom the grid
-#             cglcol="grey", 
-#             cglty=1, axislabcol="grey", 
-#             caxislabels=seq(0,500,100),
-#             cglwd=0.8,
-#             #custom labels
-#             vlcex=0.8,
-#             title = "Clustering on SAT Scores")
-# 
-# # Add a legend
-# legend(x ="topright",
-#        legend = rownames(radar_sat),
-#        bty = "n", pch=20 , 
-#        col=colors_in , 
-#        text.col = "grey", 
-#        cex=0.8, pt.cex=2)
-```
 
 
-#Radar Chart based on Graduation Rates by Race and Gender
-```{r}
-radarchart( radar_gr_race_gender, axistype=1 , 
-            maxmin=F,
-            #custom polygon
-            pcol=colors_border , pfcol=colors_in , plwd=4 , plty=1,
-            #custom the grid
-            cglcol="grey", 
-            cglty=1, axislabcol="grey", 
-            caxislabels=seq(0,20,5),
-            cglwd=0.8,
-            #custom labels
-            vlcex=0.8,
-            title = "Clustering on Graduatio Rates by Race and Gender")
-
-# Add a legend
-legend(x ="topright",
-       legend = rownames(radar_gr_race_gender),
-       bty = "n", pch=20 , 
-       col=colors_in , 
-       text.col = "grey", 
-       cex=0.8, pt.cex=2)
-```
-
-
-#Radar Chart based on College Price
-```{r}
-# radarchart( radar_npt, axistype=1 , 
-#             maxmin=F,
-#             #custom polygon
-#             pcol=colors_border , pfcol=colors_in , plwd=4 , plty=1,
-#             #custom the grid
-#             cglcol="grey", 
-#             cglty=1, axislabcol="grey", 
-#             caxislabels=seq(0,20,5),
-#             cglwd=0.8,
-#             #custom labels
-#             vlcex=0.8,
-#             title = "Clustering on College Price")
-# 
-# # Add a legend
-# legend(x ="topright",
-#        legend = rownames(radar_npt),
-#        bty = "n", pch=20 , 
-#        col=colors_in , 
-#        text.col = "grey", 
-#        cex=0.8, pt.cex=2)
-```
-
-#Radar Chart based on Debt
+#Radar Chart based on Debt:
 ```{r}
 radarchart( radar_debt, axistype=1 , 
             maxmin=F,
@@ -339,37 +251,84 @@ radarchart( radar_debt, axistype=1 ,
             cglwd=0.8,
             #custom labels
             vlcex=0.8,
-            title = "Clustering on Debt")
+            title = "Clustering on Debt and Default Rates")
 
 # Add a legend
 legend(x ="topright",
-       legend = rownames(radar_pcip),
+       legend = rownames(radar_debt),
        bty = "n", pch=20 , 
        col=colors_in , 
        text.col = "black", 
        cex=0.9, pt.cex=3)
 ```
 
-#Radar Chart based on Admission Rates
+
+#Radar Chart based on Graduation Rates by Race and Gender:
 ```{r}
-# radarchart( radar_admissions, axistype=1 , 
-#             maxmin=F,
-#             #custom polygon
-#             pcol=colors_border , pfcol=colors_in , plwd=4 , plty=1,
-#             #custom the grid
-#             cglcol="grey", 
-#             cglty=1, axislabcol="grey", 
-#             caxislabels=seq(0,20,5),
-#             cglwd=0.8,
-#             #custom labels
-#             vlcex=0.8,
-#             title = "Clustering on Admission Rates")
-# 
-# # Add a legend
-# legend(x ="topright",
-#        legend = rownames(radar_admissions),
-#        bty = "n", pch=20 , 
-#        col=colors_in , 
-#        text.col = "grey", 
-#        cex=0.8, pt.cex=2)
+radarchart( radar_gr_race_gender, axistype=1 , 
+            maxmin=F,
+            #custom polygon
+            pcol=colors_border , pfcol=colors_in , plwd=4 , plty=1,
+            #custom the grid
+            cglcol="grey", 
+            cglty=1, axislabcol="grey", 
+            caxislabels=seq(0,20,5),
+            cglwd=0.8,
+            #custom labels
+            vlcex=0.8,
+            title = "Clustering on Graduation Rates by Race and Gender")
+
+# Add a legend
+legend(x ="topright",
+       legend = rownames(radar_gr_race_gender),
+       bty = "n", pch=20 , 
+       col=colors_in , 
+       text.col = "grey", 
+       cex=0.8, pt.cex=2)
 ```
+
+#Boxplots relating to clusters
+```{r}
+
+#Change cluster to categorical type
+df_mean$cluster <- as.factor(df_mean$cluster)
+
+
+#Boxplot of default rates
+ggplot(df_mean, aes(cluster, default, group = cluster, color = cluster))+
+  geom_boxplot()+
+  ggtitle("Default Rates By Cluster")+
+  labs(y = 'Default Rates',
+       x = 'Cluster')+
+  theme(
+  panel.background = element_rect(fill = "transparent",colour = NA),
+  panel.grid.minor = element_blank(),
+  panel.grid.major = element_blank(),
+  plot.background = element_rect(fill = "transparent",colour = NA))
+
+#Boxplot of average amount of federal student loans awarded to full-time first-time undergraduates
+ggplot(df_mean, aes(cluster, floan_a, group = cluster, color = cluster))+
+  geom_boxplot()+
+  ggtitle("Average Loan Amount By Cluster")+
+  labs(y = 'Average Loan Amount',
+       x = 'Cluster')+
+  theme(
+  panel.background = element_rect(fill = "transparent",colour = NA),
+  panel.grid.minor = element_blank(),
+  panel.grid.major = element_blank(),
+  plot.background = element_rect(fill = "transparent",colour = NA))
+
+#Boxplot of percent of full-time first-time undergraduates awarded federal student loans
+ggplot(df_mean, aes(cluster, floan_p, group = cluster, color = cluster))+
+  geom_boxplot()+
+  ggtitle("Percent Of Students Receiving Federal Loans By Cluster")+
+  labs(y = 'Percent Of Students Receiving Federal Loans',
+       x = 'Cluster')+
+  theme(
+  panel.background = element_rect(fill = "transparent",colour = NA),
+  panel.grid.minor = element_blank(),
+  panel.grid.major = element_blank(),
+  plot.background = element_rect(fill = "transparent",colour = NA))
+
+```
+

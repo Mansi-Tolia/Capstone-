@@ -442,12 +442,19 @@ for (i in 1:length(dfs)){
 
 # Get rid of outliers in `default` 
 ```{r message=FALSE, warning=FALSE}
+#import clustering from Mansi work
 df_cluster <- read_csv('~/Desktop/df_alldatawithclusters.csv')
+
+#clean up names
 names(df_cluster) <- tolower(names(df_cluster))
 names(df_cluster) <- str_replace(names(df_cluster), "&", "")
 names(df_cluster) <- str_replace(names(df_cluster), " ", "_")
 names(df_cluster) <- str_replace(names(df_cluster), " ", "")
+
+#subset default rates by IQR
 df_cluster <- df_cluster[df_cluster$default <= (mean(df_cluster$default)+IQR(df_cluster$default)), ]
+
+#create version without cluster - we don't want to include this in linreg
 df_mean <- df_cluster %>% select(-cluster)
 ```
 
@@ -481,15 +488,20 @@ mean((test$default-predsRidgeTest)^2, na.rm = T)
 
 # Split by time 2008-2015/2016-2017
 ```{r message=FALSE, warning=FALSE}
+#split by years
 trainTime <- subset(df_mean, year>=2008 & year <= 2015)
 testTime <- subset(df_mean, year>2015)
 
+#linear regression
 fitTime <- lm(default~., trainTime)
 predsTimeTrain <- predict(fitTime, trainTime)
 predsTimeTest <- predict(fitTime, testTime)
 mean((train$default-predsTimeTrain)^2, na.rm = T)
 mean((test$default-predsTimeTest)^2, na.rm = T)
 ```
+
+
+-----
 
 
 # Forward Selection
@@ -601,7 +613,33 @@ predsTimeTrain <- predict(fitTimeTop20, trainTime)
 predsTimeTest <- predict(fitTimeTop20, testTime)
 mean((trainTime$default-predsTimeTrain)^2, na.rm = T)
 mean((testTime$default-predsTimeTest)^2, na.rm = T)
+
+testTime$preds <- predsTimeTest
 ```
+
+```{r}
+ggplot(testTime, aes(cluster, preds, group = cluster, color = cluster))+
+  geom_boxplot()+
+  labs(title = "Default rate by cluster", x = "Cluster", y = "Default rate")+
+  theme_minimal() +
+  theme(legend.position = "none")+
+  ggsave("~/Desktop/defaultRateByCluster.png")
+
+ggplot(testTime, aes(preds)) +
+  geom_histogram(fill = 'gray')+
+  labs(title = "Predicted default rates", x = "Predicted", y = "Default rate")+
+  theme_minimal()+
+  ggsave("~/Desktop/defaultRateHist.png")
+
+ggplot(testTime, aes(preds, floan_p))+
+  geom_point()+
+  labs(title = "Default vs federal loan %", x = "Default rate", y = "% students with federal loan")+
+  theme_minimal()+
+  ggsave("~/Desktop/defaultRateFedLoan.png")
+```
+
+
+------
 
 
 # Safety scores based on model
@@ -644,38 +682,6 @@ mean((testTime$default-predsTimeTest)^2, na.rm = T)
 # #add back to safety
 # grouped$safety <- safety_log$safety
 ```
-
-
-
-```{r message=FALSE, warning=FALSE}
-testTime$preds <- predsTimeTest
-
-testTime <- df_cluster %>% 
-  group_by(unitid) %>%
-  summarise_each(mean)
-
-df_cluster$cluster <- factor(round(df_cluster$cluster))
-df_cluster$safety <- safety_log$safety
-
-
-ggplot(testTime, aes(cluster, preds, group = cluster, color = cluster))+
-  geom_boxplot()+
-  labs(title = "Risk by cluster", x = "Cluster", y = "Risk")
-  
-ggplot(testTime, aes(x = preds, y = cinsoff, col = cluster))+
-  geom_point()
-
-ggplot(testTime, aes(x = preds, y = cotsoff, col = cluster))+ 
-geom_point()
-
-
-
-hist(testTime$preds)
-
-
-testTime %>% select_if(is.numeric) %>% cor() %>% View()
-```
-
 
 ------
 
