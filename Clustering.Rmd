@@ -128,12 +128,12 @@ plot(x, wss, type="b", main="Optimal K")
 set.seed(1234)
 
 #Scale dataset:
-df_scaled = scale(df_mean)
+df_scaled = scale(df_mean2)
 k = kmeans(df_scaled, centers=3 , nstart=20, iter.max = 25)
 #fviz_cluster(k, data=df_scaled)	
 table(k$cluster)
 
-df_mean$cluster <- k$cluster
+#df_mean$cluster <- k$cluster
 
 write_csv(df_mean, 'df_alldatawithclusters.csv')
 

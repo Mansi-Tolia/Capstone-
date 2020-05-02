@@ -593,6 +593,8 @@ ggplot(log_fw, aes(seq_along(xname), mse_test)) +
 
 # Only top 20 linear model on time
 ```{r}
+set.seed(1234)
+
 #select top 20 (ignore intercept)
 keep <- log_fw$xname[2:21]
 
@@ -603,39 +605,46 @@ for(var in keep){
   }
 formula <- as.formula(loopformula)
 
-#split
-trainTime <- subset(df_cluster, year>=2008 & year <= 2015)
-testTime <- subset(df_cluster, year>2015)
+#split 80/20
+index <- sample(1:nrow(df_mean), 0.8*nrow(df_mean))
+train <- df_cluster[index, ]
+test <- df_cluster[-index, ]
 
 #linear model
-fitTimeTop20 <- lm(formula, trainTime)
-predsTimeTrain <- predict(fitTimeTop20, trainTime)
-predsTimeTest <- predict(fitTimeTop20, testTime)
-mean((trainTime$default-predsTimeTrain)^2, na.rm = T)
-mean((testTime$default-predsTimeTest)^2, na.rm = T)
+fitTop20 <- lm(formula, train)
+predsTrain <- predict(fitTop20, train)
+predsTest <- predict(fitTop20, test)
+mean((train$default-predsTrain)^2, na.rm = T)
+mean((test$default-predsTest)^2, na.rm = T)
 
-testTime$preds <- predsTimeTest
+test$preds <- predsTest
 ```
 
 ```{r}
-ggplot(testTime, aes(cluster, preds, group = cluster, color = cluster))+
+ggplot(test, aes(cluster, preds, fill = factor(cluster)))+
   geom_boxplot()+
   labs(title = "Default rate by cluster", x = "Cluster", y = "Default rate")+
   theme_minimal() +
   theme(legend.position = "none")+
   ggsave("~/Desktop/defaultRateByCluster.png")
 
-ggplot(testTime, aes(preds)) +
+ggplot(test, aes(preds)) +
   geom_histogram(fill = 'gray')+
   labs(title = "Predicted default rates", x = "Predicted", y = "Default rate")+
   theme_minimal()+
   ggsave("~/Desktop/defaultRateHist.png")
 
-ggplot(testTime, aes(preds, floan_p))+
+ggplot(test, aes(preds, floan_p, col = factor(control)))+
   geom_point()+
   labs(title = "Default vs federal loan %", x = "Default rate", y = "% students with federal loan")+
   theme_minimal()+
   ggsave("~/Desktop/defaultRateFedLoan.png")
+
+ggplot(test, aes(control, fill= factor(cluster)))+
+  geom_bar()
+
+ggplot(test, aes(grrtm, preds, col=factor(cluster))) + 
+  geom_point()
 ```
 
 
