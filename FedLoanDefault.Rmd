@@ -625,7 +625,7 @@ ggplot(test, aes(cluster, preds, fill = factor(cluster)))+
   geom_boxplot()+
   labs(title = "Default rate by cluster", x = "Cluster", y = "Default rate")+
   theme_minimal() +
-  theme(legend.position = "none")+
+  theme(legend.position = "none") +
   ggsave("~/Desktop/defaultRateByCluster.png")
 
 ggplot(test, aes(preds)) +
