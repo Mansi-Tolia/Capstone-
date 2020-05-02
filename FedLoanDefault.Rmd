@@ -640,11 +640,19 @@ ggplot(test, aes(preds, floan_p, col = factor(control)))+
   theme_minimal()+
   ggsave("~/Desktop/defaultRateFedLoan.png")
 
-ggplot(test, aes(control, fill= factor(cluster)))+
-  geom_bar()
+ggplot(test, aes(control, fill = factor(cluster) ))+
+  geom_bar()+
+  labs(title = "University level", x = "Level", y = "Count")+
+  scale_x_continuous(breaks = c(1,2,3), labels = c("Public", "Private (non-profit)", "Private (profit)"))+
+  theme_minimal()+
+  ggsave("~/Desktop/universityLevel.png")
 
 ggplot(test, aes(grrtm, preds, col=factor(cluster))) + 
   geom_point()
+
+ggplot(test, aes(group = control,preds, fill = factor(control) ))+
+  geom_boxplot()+
+  coord_flip()
 ```
 
 
